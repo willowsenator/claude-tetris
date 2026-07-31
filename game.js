@@ -222,7 +222,7 @@ function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
-  overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
+  overlayScore.textContent = `Score: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
 }
 
@@ -234,7 +234,7 @@ function togglePause() {
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
+    overlayTitle.textContent = 'PAUSED';
     overlayScore.textContent = '';
     overlay.classList.remove('hidden');
   }
