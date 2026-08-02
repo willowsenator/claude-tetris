@@ -17,10 +17,13 @@ An implementation of the classic **Tetris** in vanilla JavaScript, using HTML5 C
     - [Option 1: open the file directly](#option-1-open-the-file-directly)
     - [Option 2: local server (recommended)](#option-2-local-server-recommended)
   - [Controls](#controls)
+  - [Lightning power-up](#lightning-power-up)
+  - [Tests](#tests)
   - [How it works](#how-it-works)
     - [1. `index.html`](#1-indexhtml)
     - [2. `style.css`](#2-stylecss)
-    - [3. `game.js`](#3-gamejs)
+    - [3. `engine.js`](#3-enginejs)
+    - [4. `game.js`](#4-gamejs)
     - [Game flow](#game-flow)
   - [Technologies](#technologies)
   - [Project structure](#project-structure)
@@ -42,6 +45,7 @@ It is a playable version of classic Tetris with all the mechanics you would expe
 - **Classic Tetris scoring** (100 / 300 / 500 / 800 multiplied by level).
 - **Levels** that go up every 10 lines and speed up the fall.
 - **Pause** and **Game Over** with a restart option.
+- A **Lightning power-up** that wipes a whole row or column.
 
 ---
 
@@ -85,26 +89,66 @@ Then open `http://localhost:8000` in your browser.
 | `↓`       | Soft drop (fall faster)       |
 | `Space`   | Hard drop (instant drop)      |
 | `P`       | Pause / resume                |
+| `Z`       | Use a Lightning charge        |
+
+---
+
+## Lightning power-up
+
+Every so often a spawning piece carries a **marked cell** — a dark dot drawn on one of its
+blocks, visible in the `NEXT` preview as well. Clear the board row that block ends up in and you
+bank one Lightning charge; the `LIGHTNING` counter in the side panel shows how many you hold.
+
+Pressing `Z` spends one charge and strikes at random:
+
+- a **row** — chosen among the rows that still hold blocks, cleared exactly like a line clear
+  (counts as one line, scores `100 × level`);
+- a **column** — cleared in place, leaving whatever floated above it where it was
+  (scores `50 × level`, does not count as a line).
+
+Power-ups live in the `POWERUPS` table in `engine.js`, so adding a second one is a data change
+rather than a rewrite.
+
+---
+
+## Tests
+
+The pure board logic in `engine.js` is covered by a dependency-free test page. Open it the same
+way as the game:
+
+```bash
+xdg-open tests.html
+```
+
+The page lists every test and a `N passed, M failed` summary (also logged to the console).
 
 ---
 
 ## How it works
 
-The game is made up of three files that work together:
+The game is made up of four files that work together:
 
 ### 1. `index.html`
 
 Defines the visual structure:
 
 - A **300 × 600** pixel `<canvas id="board">` where the board is rendered.
-- A side panel with `SCORE`, `LINES`, `LEVEL`, the next-piece preview and the control list.
+- A side panel with `SCORE`, `LINES`, `LEVEL`, `LIGHTNING`, the next-piece preview and the control list.
 - An overlay for the **PAUSED** and **GAME OVER** states.
 
 ### 2. `style.css`
 
-Provides the look and feel with a _dark / retro arcade_ aesthetic: dark background, monospaced typography for the counters and _backdrop blur_ on the overlays.
+Provides the look and feel: a light and a dark theme built from CSS custom properties (including `--power`, the colour of the Lightning mark), monospaced typography for the counters and _backdrop blur_ on the overlays.
 
-### 3. `game.js`
+### 3. `engine.js`
+
+Holds the pure helpers that need no DOM and no game state, so the same code runs in the game and
+in `tests.html`: `createBoard`, `rotateCW`, `clearRowAt`, `clearColumnAt`, `pickPowerCell`,
+`rotatePowerCell`, `pickLightningTarget`, `clearTarget` and the `POWERUPS` table. Every function that needs
+randomness takes an `rng` parameter defaulting to `Math.random`, which is what makes the tests
+deterministic.
+
+### 4. `game.js`
 
 Contains all the game logic. Broadly:
 
@@ -117,12 +161,13 @@ Contains all the game logic. Broadly:
 - **Scoring**: uses the classic table `[0, 100, 300, 500, 800]` multiplied by the current level; hard drop adds 2 points per cell travelled and soft drop 1 point per row.
 - **Level and speed**: the level goes up every 10 lines; drop speed is computed as `max(100, 1000 − (level − 1) × 90)` milliseconds.
 - **Ghost piece** (`ghostY`): projects the final position of the current piece downwards and draws it with `globalAlpha = 0.2`.
+- **Power-up tracking**: a `powerBoard` matrix mirrors `board` and marks which landed cells carry a Lightning mark, since a board cell value already doubles as its color index. It is spliced in lockstep with `board` on every clear.
 
 ### Game flow
 
 ```
 init()
-  ├─ createBoard()                  → empty matrix
+  ├─ createBoard(ROWS, COLS)        → empty matrix (board and powerBoard)
   ├─ next = randomPiece()
   ├─ spawn()                        → moves next into current and generates a new next
   └─ requestAnimationFrame(loop)
@@ -133,7 +178,7 @@ init()
      ├─ draw()  (grid + board + ghost + current piece)
      └─ requestAnimationFrame(loop)
 
-   keydown → move / rotate / soft-drop / hard-drop / pause
+   keydown → move / rotate / soft-drop / hard-drop / lightning / pause
 ```
 
 When a newly generated piece already collides on appearing (`spawn`), `endGame()` is triggered and the **Game Over** overlay is shown.
@@ -157,8 +202,11 @@ When a newly generated piece already collides on appearing (`spawn`), `endGame()
 ```
 03-tetris/
 ├── index.html      # DOM structure and canvases
-├── style.css       # Game styles (dark theme)
-├── game.js         # All the Tetris logic (~300 lines)
+├── style.css       # Game styles (light / dark themes)
+├── engine.js       # Pure board helpers and the POWERUPS table
+├── game.js         # All the Tetris logic
+├── tests.html      # Test page for engine.js
+├── tests.js        # Tests and the tiny runner
 └── README.md
 ```
 
@@ -176,6 +224,7 @@ Some parameters that are easy to tweak in `game.js`:
 | `COLORS`       | Color palette per piece type        | 7 colors              |
 | `LINE_SCORES`  | Points for 1, 2, 3 or 4 cleared lines | `[0,100,300,500,800]` |
 | `dropInterval` | Initial drop speed in ms            | `1000`                |
+| `POWER_CHANCE` | Odds that a piece carries a Lightning mark | `0.15`         |
 
 > If you change `COLS`, `ROWS` or `BLOCK`, remember to also adjust the `width` and `height` of `<canvas id="board">` in `index.html` so they match (`COLS × BLOCK` by `ROWS × BLOCK`).
 
