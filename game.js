@@ -26,7 +26,8 @@ const PIECES = [
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
 ];
 
-const LINE_SCORES = [0, 100, 300, 500, 800];
+// Chance that a spawning piece carries a lightning mark.
+const POWER_CHANCE = 0.15;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -35,6 +36,7 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const powerEl = document.getElementById('power-count');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
@@ -43,7 +45,7 @@ const themeToggleBtn = document.getElementById('theme-toggle');
 
 const THEME_KEY = 'tetris-theme';
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor;
+let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor;
 
 function applyTheme(theme) {
   if (theme === 'dark') {
@@ -55,7 +57,9 @@ function applyTheme(theme) {
     themeToggleBtn.textContent = '🌙';
     themeToggleBtn.setAttribute('aria-label', 'Switch to dark theme');
   }
-  gridColor = getComputedStyle(document.body).getPropertyValue('--grid-line').trim();
+  const styles = getComputedStyle(document.body);
+  gridColor = styles.getPropertyValue('--grid-line').trim();
+  powerColor = styles.getPropertyValue('--power').trim();
 }
 
 function toggleTheme() {
@@ -67,14 +71,16 @@ function toggleTheme() {
 applyTheme(localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light');
 themeToggleBtn.addEventListener('click', toggleTheme);
 
-function createBoard() {
-  return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
-}
-
 function randomPiece() {
   const type = Math.floor(Math.random() * 7) + 1;
   const shape = PIECES[type].map(row => [...row]);
-  return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
+  return {
+    type,
+    shape,
+    x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
+    y: 0,
+    power: Math.random() < POWER_CHANCE ? pickPowerCell(shape) : null,
+  };
 }
 
 function collide(shape, ox, oy) {
@@ -90,20 +96,13 @@ function collide(shape, ox, oy) {
   return false;
 }
 
-function rotateCW(shape) {
-  const rows = shape.length, cols = shape[0].length;
-  const result = Array.from({ length: cols }, () => new Array(rows).fill(0));
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++)
-      result[c][rows - 1 - r] = shape[r][c];
-  return result;
-}
-
 function tryRotate() {
   const rotated = rotateCW(current.shape);
+  const rowsBefore = current.shape.length;   // the mark remap needs the pre-rotation height
   const kicks = [0, -1, 1, -2, 2];
   for (const kick of kicks) {
     if (!collide(rotated, current.x + kick, current.y)) {
+      if (current.power) current.power = rotatePowerCell(current.power, rowsBefore);
       current.shape = rotated;
       current.x += kick;
       return;
@@ -114,27 +113,36 @@ function tryRotate() {
 function merge() {
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
-      if (current.shape[r][c])
+      if (current.shape[r][c]) {
         board[current.y + r][current.x + c] = current.shape[r][c];
+        if (current.power && current.power.r === r && current.power.c === c)
+          powerBoard[current.y + r][current.x + c] = 1;
+      }
+}
+
+function updateLevel() {
+  level = Math.floor(lines / 10) + 1;
+  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
 }
 
 function clearLines() {
-  let cleared = 0;
-  for (let r = ROWS - 1; r >= 0; r--) {
-    if (board[r].every(v => v !== 0)) {
-      board.splice(r, 1);
-      board.unshift(new Array(COLS).fill(0));
-      cleared++;
-      r++;
-    }
-  }
-  if (cleared) {
-    lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
-    level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
-    updateHUD();
-  }
+  const { cleared, charges } = clearFullRows(board, powerBoard);
+  if (!cleared) return;
+  powerCharges += charges;
+  lines += cleared;
+  score += (LINE_SCORES[cleared] || 0) * level;
+  updateLevel();
+  updateHUD();
+}
+
+function usePowerUp() {
+  if (!powerCharges || paused || gameOver) return;
+  powerCharges--;
+  const reward = lightningReward(POWERUPS.lightning.apply(board, powerBoard), level);
+  score += reward.points;
+  lines += reward.lines;
+  updateLevel();
+  updateHUD();
 }
 
 function ghostY() {
@@ -179,6 +187,7 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  powerEl.textContent = powerCharges;
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -191,6 +200,13 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   context.fillStyle = 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
   context.globalAlpha = 1;
+}
+
+function drawPowerMark(context, x, y, size) {
+  context.fillStyle = powerColor;
+  context.beginPath();
+  context.arc(x * size + size / 2, y * size + size / 2, size * 0.18, 0, Math.PI * 2);
+  context.fill();
 }
 
 function drawGrid() {
@@ -216,8 +232,10 @@ function draw() {
 
   // board
   for (let r = 0; r < ROWS; r++)
-    for (let c = 0; c < COLS; c++)
+    for (let c = 0; c < COLS; c++) {
       drawBlock(ctx, c, r, board[r][c], BLOCK);
+      if (powerBoard[r][c]) drawPowerMark(ctx, c, r, BLOCK);
+    }
 
   // ghost
   const gy = ghostY();
@@ -230,6 +248,8 @@ function draw() {
   for (let r = 0; r < current.shape.length; r++)
     for (let c = 0; c < current.shape[r].length; c++)
       drawBlock(ctx, current.x + c, current.y + r, current.shape[r][c], BLOCK);
+  if (current.power)
+    drawPowerMark(ctx, current.x + current.power.c, current.y + current.power.r, BLOCK);
 }
 
 function drawNext() {
@@ -241,6 +261,8 @@ function drawNext() {
   for (let r = 0; r < shape.length; r++)
     for (let c = 0; c < shape[r].length; c++)
       drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
+  if (next.power)
+    drawPowerMark(nextCtx, offX + next.power.c, offY + next.power.r, NB);
 }
 
 function endGame() {
@@ -282,13 +304,14 @@ function loop(ts) {
 }
 
 function init() {
-  board = createBoard();
+  board = createBoard(ROWS, COLS);
+  powerBoard = createBoard(ROWS, COLS);
+  powerCharges = 0;
   score = 0;
   lines = 0;
-  level = 1;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  updateLevel();
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
@@ -319,6 +342,9 @@ document.addEventListener('keydown', e => {
     case 'Space':
       e.preventDefault();
       hardDrop();
+      break;
+    case 'KeyZ':
+      usePowerUp();
       break;
   }
   updateHUD();
