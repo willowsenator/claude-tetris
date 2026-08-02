@@ -237,6 +237,10 @@ function draw() {
       if (powerBoard[r][c]) drawPowerMark(ctx, c, r, BLOCK);
     }
 
+  // A finished game has no piece in play: the one that failed to spawn never became
+  // part of the board, so the last frame shows the locked stack on its own.
+  if (gameOver) return;
+
   // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
@@ -268,6 +272,9 @@ function drawNext() {
 function endGame() {
   gameOver = true;
   cancelAnimationFrame(animId);
+  // The keypress paths (hard/soft drop) end the game outside loop(), so nothing would
+  // render the piece that just locked. Draw here; in the loop path this is idempotent.
+  draw();
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Score: ${score.toLocaleString()}`;
   overlay.classList.remove('hidden');
@@ -300,6 +307,7 @@ function loop(ts) {
     }
   }
   draw();
+  if (!shouldScheduleFrame({ gameOver, paused })) return;
   animId = requestAnimationFrame(loop);
 }
 

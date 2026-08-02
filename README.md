@@ -147,8 +147,9 @@ Holds the pure helpers that need no DOM and no game state, so the same code runs
 in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), clearing
 (`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
 (`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
-table) and the scoring constants. The dividing line: anything decidable from a board and a level
-lives here, under test; `game.js` keeps what needs mutable state or the DOM.
+table), the loop-continuation rule (`shouldScheduleFrame`) and the scoring constants. The dividing
+line: anything decidable from a board and a level lives here, under test; `game.js` keeps what
+needs mutable state or the DOM.
 
 Every function that needs randomness takes an `rng` parameter defaulting to `Math.random`, which
 is what makes the tests deterministic.
@@ -161,7 +162,7 @@ Contains all the game logic. Broadly:
 - **Pieces**: defined as square matrices. Rotation is computed as a transpose + row reverse (`rotateCW`).
 - **Collision detection** (`collide`): checks that no cell of the piece leaves the board or overlaps already-locked blocks.
 - **Wall kicks** (`tryRotate`): if the rotation collides, it tries shifting the piece ±1 and ±2 columns before discarding the turn.
-- **Game loop** (`loop`): based on `requestAnimationFrame`, it accumulates elapsed time and drops the piece one row once `dropInterval` is exceeded.
+- **Game loop** (`loop`): based on `requestAnimationFrame`, it accumulates elapsed time and drops the piece one row once `dropInterval` is exceeded. It asks `shouldScheduleFrame` before booking the next frame, so the frame that ends the game is the last one. Pausing is handled earlier, by `togglePause()` cancelling the pending frame; the predicate states the whole "may the game advance" rule in one place so future flags have somewhere to go.
 - **Line clearing** (`clearLines`): delegates to `clearFullRows` in `engine.js`, which walks the board from the bottom up removing every full row and inserting an empty one at the top, and reports how many Lightning marks the cleared rows carried.
 - **Scoring**: uses the classic table `[0, 100, 300, 500, 800]` multiplied by the current level; hard drop adds 2 points per cell travelled and soft drop 1 point per row.
 - **Level and speed**: the level goes up every 10 lines; drop speed is computed as `max(100, 1000 − (level − 1) × 90)` milliseconds.
@@ -181,12 +182,17 @@ init()
      ├─ accumulates dt
      ├─ if dt ≥ dropInterval → drops the piece or calls lockPiece()
      ├─ draw()  (grid + board + ghost + current piece)
-     └─ requestAnimationFrame(loop)
+     └─ requestAnimationFrame(loop)   only if shouldScheduleFrame(...)
 
    keydown → move / rotate / soft-drop / hard-drop / lightning / pause
 ```
 
-When a newly generated piece already collides on appearing (`spawn`), `endGame()` is triggered and the **Game Over** overlay is shown.
+When a newly generated piece already collides on appearing (`spawn`), `endGame()` is triggered and
+the **Game Over** overlay is shown. The end can be reached from inside a frame, which cannot cancel
+itself — so the loop checks `shouldScheduleFrame` after drawing and simply does not book another
+frame. `endGame()` draws once itself, because a hard or soft drop ends the game outside the loop
+and nothing else would render the piece that just locked. Either way the final stack is left frozen
+under the overlay, without the piece that failed to spawn.
 
 ---
 
