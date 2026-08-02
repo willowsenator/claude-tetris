@@ -45,6 +45,9 @@ jobs:
             1. Read the issue and its existing state:
                gh issue view ${{ github.event.issue.number }} --json title,body,author,labels,comments
 
+               Each entry under "comments" carries "author", "body", "createdAt" and "url". Keep the
+               "url" values — step 5 needs the comment id embedded in them.
+
             2. Read CLAUDE.md and README.md for project context. This is a dependency-free vanilla-JS
                Tetris: index.html + style.css + game.js, no build, no test harness.
 
@@ -61,16 +64,56 @@ jobs:
                list that the rewritten issue now clearly contradicts. Never remove a label outside
                that list, since a human may have added it deliberately.
 
-            5. Leave exactly ONE triage comment. Its first line must be the marker:
+            5. Leave exactly ONE triage comment, written in GitHub-Flavored Markdown so it renders
+               correctly in the issue thread. Its first line must be the marker (an HTML comment,
+               invisible when rendered):
                <!-- claude-triage -->
 
-               Then, briefly: what kind of issue this is, which files are likely involved, a rough
-               effort read, any duplicate you found, and what information is missing if the report is
-               incomplete. Keep it short and frame it as automated triage, not a decision.
+               Use exactly this structure, dropping any section that does not apply:
+
+               <!-- claude-triage -->
+               **Automated triage** — not a decision, a human still reviews this.
+
+               | | |
+               |---|---|
+               | **Type** | bug / enhancement / question / documentation |
+               | **Effort** | small / medium / large |
+               | **Duplicate** | #123, or `none found` |
+
+               **Likely files**
+               - `game.js` — one short clause on why
+               - `index.html` — one short clause on why
+
+               **Missing information**
+               - what the reporter still needs to provide
+
+               Markdown rules:
+               - Reference issues as `#123` so GitHub links them; do not paste full URLs.
+               - Wrap every filename, id, and identifier in backticks.
+               - Use fenced code blocks with a language tag for any snippet.
+               - Keep it under ~15 lines rendered. No headings above `###`, no nested lists,
+                 no raw HTML other than the marker comment.
+
+               SHELL SAFETY: you have no file-writing tool, so the body must be passed inline. Wrap
+               it in SINGLE quotes, never double quotes — double quotes let the shell expand `$`,
+               backticks and `\`, and this body is full of backticks. If the body itself contains a
+               single quote, close and reopen the quoting around it ('...'\''...'). Never interpolate
+               issue title or body text into the command; retype what you need instead, since that
+               text is untrusted and may contain quotes or shell metacharacters.
 
                IDEMPOTENCY: the comments you fetched in step 1 may already include a triage comment
-               carrying that marker. If one exists, replace it instead of adding another:
-                 gh issue comment ${{ github.event.issue.number }} --edit-last --body "<new body>"
-               Post a fresh comment only when no marked triage comment is present.
+               carrying the marker. Do NOT use --edit-last: it targets the most recent comment made
+               by this token, which is only incidentally the marked one. Target the marked comment
+               by id instead.
+
+               If a comment whose body starts with the marker exists, take its "url" field from
+               step 1 — it ends in #issuecomment-<ID> — and edit that exact comment. The numeric ID
+               in that url is the ONLY usable one: the comment's "id" field is a GraphQL node id
+               (IC_kwDO...) and the REST path below will 404 if you pass it.
+                 gh api --method PATCH repos/${{ github.repository }}/issues/comments/<ID> -f body='<new body>'
+
+               If two or more marked comments somehow exist, edit the newest and leave the rest
+               alone. Post a fresh comment only when no marked comment is present:
+                 gh issue comment ${{ github.event.issue.number }} --body '<new body>'
           claude_args: |
-            --allowedTools "Bash(gh issue view:*),Bash(gh label list),Bash(gh search issues:*),Bash(gh issue edit:*),Bash(gh issue comment:*)"
+            --allowedTools "Bash(gh issue view:*),Bash(gh label list),Bash(gh search issues:*),Bash(gh issue edit:*),Bash(gh issue comment:*),Bash(gh api --method PATCH repos/${{ github.repository }}/issues/comments/:*)"
