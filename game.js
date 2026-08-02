@@ -300,6 +300,7 @@ function loop(ts) {
     }
   }
   draw();
+  if (!shouldScheduleFrame({ gameOver, paused })) return;
   animId = requestAnimationFrame(loop);
 }
 

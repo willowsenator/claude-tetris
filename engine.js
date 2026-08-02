@@ -114,3 +114,11 @@ function lightningReward(target, level) {
     ? { points: LINE_SCORES[1] * level, lines: 1 }
     : { points: LIGHTNING_COLUMN_SCORE * level, lines: 0 };
 }
+
+/* Whether the animation loop should schedule another frame. A game that has ended
+   or is paused must not advance. The loop has to ask before rescheduling because a
+   frame can end the game from inside itself, and at that point it is too late to
+   cancel: the frame it would cancel is the one already running. */
+function shouldScheduleFrame({ gameOver, paused }) {
+  return !gameOver && !paused;
+}

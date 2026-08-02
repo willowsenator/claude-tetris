@@ -358,6 +358,24 @@ test('lightning rewards scale with the level', () => {
   assertEqual(lightningReward({ kind: 'column', index: 0 }, 3).points, LIGHTNING_COLUMN_SCORE * 3);
 });
 
+/* ---- shouldScheduleFrame ---- */
+
+test('a running game keeps the loop going', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: false, paused: false }), true);
+});
+
+test('a finished game stops the loop', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: true, paused: false }), false);
+});
+
+test('a paused game stops the loop', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: false, paused: true }), false);
+});
+
+test('a game that is both finished and paused stops the loop', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: true, paused: true }), false);
+});
+
 /* ---- report ---- */
 
 const passed = results.filter(r => r.ok).length;
