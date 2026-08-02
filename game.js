@@ -101,10 +101,11 @@ function collide(shape, ox, oy) {
 
 function tryRotate() {
   const rotated = rotateCW(current.shape);
+  const rowsBefore = current.shape.length;   // the mark remap needs the pre-rotation height
   const kicks = [0, -1, 1, -2, 2];
   for (const kick of kicks) {
     if (!collide(rotated, current.x + kick, current.y)) {
-      if (current.power) current.power = rotatePowerCell(current.power, current.shape.length);
+      if (current.power) current.power = rotatePowerCell(current.power, rowsBefore);
       current.shape = rotated;
       current.x += kick;
       return;
@@ -147,7 +148,7 @@ function clearLines() {
 }
 
 function usePowerUp() {
-  if (!powerCharges) return;
+  if (!powerCharges || paused || gameOver) return;
   powerCharges--;
   const target = POWERUPS.lightning.apply(board);
   clearTarget(powerBoard, target);

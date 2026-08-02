@@ -157,6 +157,17 @@ test('rotatePowerCell follows the same mapping as rotateCW', () => {
   assertEqual(moved, { r: 1, c: 2 });
 });
 
+test('rotatePowerCell returns the mark to its origin after four turns', () => {
+  const shape = [
+    [0, 3, 0],
+    [3, 3, 3],
+    [0, 0, 0],
+  ];
+  let pos = { r: 0, c: 1 };
+  for (let i = 0; i < 4; i++) pos = rotatePowerCell(pos, shape.length);
+  assertEqual(pos, { r: 0, c: 1 });
+});
+
 test('rotatePowerCell handles non-square shapes', () => {
   const shape = [
     [1, 1, 1, 1],
@@ -182,11 +193,30 @@ test('pickLightningTarget picks a row among the non-empty ones', () => {
 
 test('pickLightningTarget picks a column when the coin flip says so', () => {
   const board = [
-    [1, 0, 0],
-    [1, 0, 0],
+    [1, 0, 1],
+    [1, 0, 1],
   ];
   const target = pickLightningTarget(board, stubRng([0.9, 0.99]));
   assertEqual(target, { kind: 'column', index: 2 });
+});
+
+test('pickLightningTarget never strikes an empty column', () => {
+  const board = [
+    [0, 1, 0],
+    [0, 1, 0],
+  ];
+  const target = pickLightningTarget(board, stubRng([0.9, 0]));
+  assertEqual(target, { kind: 'column', index: 1 });
+});
+
+test('pickLightningTarget picks the last candidate row for an rng near 1', () => {
+  const board = [
+    [1, 0],
+    [0, 0],
+    [0, 1],
+  ];
+  const target = pickLightningTarget(board, stubRng([0.1, 0.99]));
+  assertEqual(target, { kind: 'row', index: 2 });
 });
 
 test('pickLightningTarget falls back to a column on an empty board', () => {

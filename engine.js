@@ -43,14 +43,24 @@ function rotatePowerCell(pos, rows) {
   return { r: pos.c, c: rows - 1 - pos.r };
 }
 
-/* Chooses what lightning strikes: a non-empty row, or else any column. */
+/* Chooses what lightning strikes. Only rows and columns that still hold blocks
+   are candidates, so a charge is never spent on empty space. An empty board has
+   no candidates at all, and the strike falls on an arbitrary column. */
 function pickLightningTarget(board, rng = Math.random) {
   const nonEmptyRows = [];
   for (let r = 0; r < board.length; r++)
     if (board[r].some(v => v !== 0)) nonEmptyRows.push(r);
 
-  if (rng() < 0.5 && nonEmptyRows.length) {
+  const nonEmptyCols = [];
+  for (let c = 0; c < board[0].length; c++)
+    if (board.some(row => row[c] !== 0)) nonEmptyCols.push(c);
+
+  const wantsRow = rng() < 0.5;
+  if (wantsRow && nonEmptyRows.length) {
     return { kind: 'row', index: nonEmptyRows[Math.floor(rng() * nonEmptyRows.length)] };
+  }
+  if (nonEmptyCols.length) {
+    return { kind: 'column', index: nonEmptyCols[Math.floor(rng() * nonEmptyCols.length)] };
   }
   return { kind: 'column', index: Math.floor(rng() * board[0].length) };
 }

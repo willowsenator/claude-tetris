@@ -106,8 +106,9 @@ Pressing `Z` spends one charge and strikes at random:
 - a **column** — cleared in place, leaving whatever floated above it where it was
   (scores `50 × level`, does not count as a line).
 
-Power-ups live in the `POWERUPS` table in `engine.js`, so adding a second one is a data change
-rather than a rewrite.
+The strike itself lives in the `POWERUPS` table in `engine.js`, isolated from the game state. A
+second power-up would still need work in `game.js` — the charge counter, the `Z` binding and the
+scoring branch are all specific to Lightning today.
 
 ---
 

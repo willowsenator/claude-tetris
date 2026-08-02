@@ -18,7 +18,7 @@ There is no build or lint command. New logic that can be expressed as a pure fun
 
 ## Architecture
 
-`engine.js` holds the pure, DOM-free, state-free helpers so the same code runs in the game and in `tests.html`: `createBoard(rows, cols)`, `rotateCW`, `clearRowAt`, `clearColumnAt`, `pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `clearTarget` and the `POWERUPS` table. It must load **before** `game.js`. Functions that need randomness take an `rng` parameter defaulting to `Math.random` — that parameter exists purely so tests can inject a stub, and is the only randomness abstraction in the project.
+`engine.js` holds the pure, DOM-free, state-free helpers so the same code runs in the game and in `tests.html`: `createBoard(rows, cols)`, `rotateCW`, `clearRowAt`, `clearColumnAt`, `pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `clearTarget` and the `POWERUPS` table. It must load **before** `game.js`. Only the strike is table-driven — `powerCharges`, the `KeyZ` binding and the scoring branch in `usePowerUp()` are all Lightning-specific, so a second power-up is not a pure data addition. Functions that need randomness take an `rng` parameter defaulting to `Math.random` — that parameter exists purely so tests can inject a stub, and is the only randomness abstraction in the project.
 
 `game.js` is a single IIFE-less script under `'use strict'` operating on module-level mutable globals (`board`, `powerBoard`, `powerCharges`, `current`, `next`, `score`, `lines`, `level`, `paused`, `gameOver`, `dropAccum`, `dropInterval`, `animId`). `init()` is both the boot path and the restart path — it resets every global, cancels the pending frame, and re-enters the loop. Anything added to game state must be reset there or it leaks across restarts.
 
