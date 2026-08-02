@@ -1,7 +1,14 @@
 'use strict';
 
-/* Pure board helpers, free of DOM and of game state, so they can be unit tested
-   (tests.html) as well as used by game.js. Browser globals only — no modules. */
+/* Pure board rules, free of DOM and of game state, so they can be unit tested
+   (tests.html) as well as used by game.js. Browser globals only — no modules.
+
+   Several helpers take two grids: the board itself and `marks`, a grid of the
+   same shape holding 1 where a cell carries a power-up mark. They are always
+   mutated together — a mark must never outlive the block under it. */
+
+const LINE_SCORES = [0, 100, 300, 500, 800];
+const LIGHTNING_COLUMN_SCORE = 50;
 
 function createBoard(rows, cols) {
   return Array.from({ length: rows }, () => new Array(cols).fill(0));
@@ -25,6 +32,24 @@ function clearRowAt(board, r) {
 /* Empties column c in place. Nothing falls: a column clear leaves no gap to close. */
 function clearColumnAt(board, c) {
   for (const row of board) row[c] = 0;
+}
+
+/* Clears every full row, mirroring each clear on `marks`. Returns how many rows
+   went and how many marks they carried away, which is what the game banks as
+   power-up charges. Walks bottom-up and re-checks the row that shifts into place. */
+function clearFullRows(board, marks) {
+  let cleared = 0;
+  let charges = 0;
+  for (let r = board.length - 1; r >= 0; r--) {
+    if (board[r].every(v => v !== 0)) {
+      charges += marks[r].filter(v => v).length;
+      clearRowAt(board, r);
+      clearRowAt(marks, r);
+      cleared++;
+      r++;
+    }
+  }
+  return { cleared, charges };
 }
 
 /* Picks one filled cell of a piece shape to carry a power-up mark, or null if none. */
@@ -65,8 +90,7 @@ function pickLightningTarget(board, rng = Math.random) {
   return { kind: 'column', index: Math.floor(rng() * board[0].length) };
 }
 
-/* Applies a target to any board-shaped grid, so the game can mirror a strike
-   onto its parallel power-up grid without repeating the dispatch. */
+/* Applies a target to one board-shaped grid. */
 function clearTarget(board, target) {
   if (target.kind === 'row') clearRowAt(board, target.index);
   else clearColumnAt(board, target.index);
@@ -74,10 +98,19 @@ function clearTarget(board, target) {
 
 const POWERUPS = {
   lightning: {
-    apply(board, rng = Math.random) {
+    apply(board, marks, rng = Math.random) {
       const target = pickLightningTarget(board, rng);
       clearTarget(board, target);
+      clearTarget(marks, target);
       return target;
     },
   },
 };
+
+/* What a lightning strike is worth. A row is cleared like a line clear and
+   counts as one; a column is not a line, so it scores less and counts as none. */
+function lightningReward(target, level) {
+  return target.kind === 'row'
+    ? { points: LINE_SCORES[1] * level, lines: 1 }
+    : { points: LIGHTNING_COLUMN_SCORE * level, lines: 0 };
+}

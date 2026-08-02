@@ -26,11 +26,8 @@ const PIECES = [
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
 ];
 
-const LINE_SCORES = [0, 100, 300, 500, 800];
-
 // Chance that a spawning piece carries a lightning mark.
 const POWER_CHANCE = 0.15;
-const LIGHTNING_COLUMN_SCORE = 50;
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
@@ -129,36 +126,22 @@ function updateLevel() {
 }
 
 function clearLines() {
-  let cleared = 0;
-  for (let r = ROWS - 1; r >= 0; r--) {
-    if (board[r].every(v => v !== 0)) {
-      powerCharges += powerBoard[r].filter(v => v).length;
-      clearRowAt(board, r);
-      clearRowAt(powerBoard, r);
-      cleared++;
-      r++;
-    }
-  }
-  if (cleared) {
-    lines += cleared;
-    score += (LINE_SCORES[cleared] || 0) * level;
-    updateLevel();
-    updateHUD();
-  }
+  const { cleared, charges } = clearFullRows(board, powerBoard);
+  if (!cleared) return;
+  powerCharges += charges;
+  lines += cleared;
+  score += (LINE_SCORES[cleared] || 0) * level;
+  updateLevel();
+  updateHUD();
 }
 
 function usePowerUp() {
   if (!powerCharges || paused || gameOver) return;
   powerCharges--;
-  const target = POWERUPS.lightning.apply(board);
-  clearTarget(powerBoard, target);
-  if (target.kind === 'row') {
-    lines++;
-    score += LINE_SCORES[1] * level;
-    updateLevel();
-  } else {
-    score += LIGHTNING_COLUMN_SCORE * level;
-  }
+  const reward = lightningReward(POWERUPS.lightning.apply(board, powerBoard), level);
+  score += reward.points;
+  lines += reward.lines;
+  updateLevel();
   updateHUD();
 }
 

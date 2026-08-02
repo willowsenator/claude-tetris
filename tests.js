@@ -242,26 +242,120 @@ test('clearTarget clears a column target', () => {
   assertEqual(board, [[1, 0], [2, 0]]);
 });
 
-/* ---- POWERUPS.lightning ---- */
+/* ---- clearFullRows ---- */
 
-test('lightning clears the row it targets', () => {
+test('clearFullRows clears a full row and reports it', () => {
+  const board = [
+    [1, 0],
+    [2, 3],
+  ];
+  const marks = createBoard(2, 2);
+  const result = clearFullRows(board, marks);
+  assertEqual(result, { cleared: 1, charges: 0 });
+  assertEqual(board, [[0, 0], [1, 0]]);
+});
+
+test('clearFullRows leaves a board with no full row alone', () => {
+  const board = [
+    [1, 0],
+    [0, 2],
+  ];
+  const result = clearFullRows(board, createBoard(2, 2));
+  assertEqual(result, { cleared: 0, charges: 0 });
+  assertEqual(board, [[1, 0], [0, 2]]);
+});
+
+test('clearFullRows banks every mark carried by a cleared row', () => {
   const board = [
     [0, 0],
     [1, 2],
   ];
-  const target = POWERUPS.lightning.apply(board, stubRng([0, 0]));
-  assertEqual(target, { kind: 'row', index: 1 });
-  assertEqual(board, [[0, 0], [0, 0]]);
+  const marks = [
+    [0, 0],
+    [1, 1],
+  ];
+  const result = clearFullRows(board, marks);
+  assertEqual(result, { cleared: 1, charges: 2 });
+  assertEqual(marks, [[0, 0], [0, 0]]);
 });
 
-test('lightning clears the column it targets', () => {
+test('clearFullRows handles several full rows at once', () => {
+  const board = [
+    [1, 0],
+    [1, 1],
+    [2, 2],
+  ];
+  const marks = [
+    [0, 0],
+    [1, 0],
+    [0, 1],
+  ];
+  const result = clearFullRows(board, marks);
+  assertEqual(result, { cleared: 2, charges: 2 });
+  assertEqual(board, [[0, 0], [0, 0], [1, 0]]);
+});
+
+test('clearFullRows keeps surviving marks aligned with their blocks', () => {
+  const board = [
+    [0, 5],
+    [1, 1],
+  ];
+  const marks = [
+    [0, 1],
+    [0, 0],
+  ];
+  clearFullRows(board, marks);
+  // The 5 fell from row 0 to row 1, and its mark fell with it.
+  assertEqual(board, [[0, 0], [0, 5]]);
+  assertEqual(marks, [[0, 0], [0, 1]]);
+});
+
+/* ---- POWERUPS.lightning ---- */
+
+test('lightning clears the row it targets on both grids', () => {
+  const board = [
+    [0, 0],
+    [1, 2],
+  ];
+  const marks = [
+    [0, 0],
+    [1, 0],
+  ];
+  const target = POWERUPS.lightning.apply(board, marks, stubRng([0, 0]));
+  assertEqual(target, { kind: 'row', index: 1 });
+  assertEqual(board, [[0, 0], [0, 0]]);
+  assertEqual(marks, [[0, 0], [0, 0]]);
+});
+
+test('lightning clears the column it targets on both grids', () => {
   const board = [
     [1, 2],
     [3, 4],
   ];
-  const target = POWERUPS.lightning.apply(board, stubRng([0.9, 0]));
+  const marks = [
+    [1, 0],
+    [1, 1],
+  ];
+  const target = POWERUPS.lightning.apply(board, marks, stubRng([0.9, 0]));
   assertEqual(target, { kind: 'column', index: 0 });
   assertEqual(board, [[0, 2], [0, 4]]);
+  assertEqual(marks, [[0, 0], [0, 1]]);
+});
+
+/* ---- lightningReward ---- */
+
+test('a row strike scores a single line clear and counts as a line', () => {
+  assertEqual(lightningReward({ kind: 'row', index: 0 }, 1), { points: LINE_SCORES[1], lines: 1 });
+});
+
+test('a column strike scores less and counts as no line', () => {
+  assertEqual(lightningReward({ kind: 'column', index: 0 }, 1),
+    { points: LIGHTNING_COLUMN_SCORE, lines: 0 });
+});
+
+test('lightning rewards scale with the level', () => {
+  assertEqual(lightningReward({ kind: 'row', index: 0 }, 3).points, LINE_SCORES[1] * 3);
+  assertEqual(lightningReward({ kind: 'column', index: 0 }, 3).points, LIGHTNING_COLUMN_SCORE * 3);
 });
 
 /* ---- report ---- */

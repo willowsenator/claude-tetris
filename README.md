@@ -144,10 +144,14 @@ Provides the look and feel: a light and a dark theme built from CSS custom prope
 ### 3. `engine.js`
 
 Holds the pure helpers that need no DOM and no game state, so the same code runs in the game and
-in `tests.html`: `createBoard`, `rotateCW`, `clearRowAt`, `clearColumnAt`, `pickPowerCell`,
-`rotatePowerCell`, `pickLightningTarget`, `clearTarget` and the `POWERUPS` table. Every function that needs
-randomness takes an `rng` parameter defaulting to `Math.random`, which is what makes the tests
-deterministic.
+in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), clearing
+(`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
+(`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
+table) and the scoring constants. The dividing line: anything decidable from a board and a level
+lives here, under test; `game.js` keeps what needs mutable state or the DOM.
+
+Every function that needs randomness takes an `rng` parameter defaulting to `Math.random`, which
+is what makes the tests deterministic.
 
 ### 4. `game.js`
 
@@ -158,11 +162,11 @@ Contains all the game logic. Broadly:
 - **Collision detection** (`collide`): checks that no cell of the piece leaves the board or overlaps already-locked blocks.
 - **Wall kicks** (`tryRotate`): if the rotation collides, it tries shifting the piece ±1 and ±2 columns before discarding the turn.
 - **Game loop** (`loop`): based on `requestAnimationFrame`, it accumulates elapsed time and drops the piece one row once `dropInterval` is exceeded.
-- **Line clearing** (`clearLines`): walks the board from the bottom up; every full row is removed and an empty one is inserted at the top.
+- **Line clearing** (`clearLines`): delegates to `clearFullRows` in `engine.js`, which walks the board from the bottom up removing every full row and inserting an empty one at the top, and reports how many Lightning marks the cleared rows carried.
 - **Scoring**: uses the classic table `[0, 100, 300, 500, 800]` multiplied by the current level; hard drop adds 2 points per cell travelled and soft drop 1 point per row.
 - **Level and speed**: the level goes up every 10 lines; drop speed is computed as `max(100, 1000 − (level − 1) × 90)` milliseconds.
 - **Ghost piece** (`ghostY`): projects the final position of the current piece downwards and draws it with `globalAlpha = 0.2`.
-- **Power-up tracking**: a `powerBoard` matrix mirrors `board` and marks which landed cells carry a Lightning mark, since a board cell value already doubles as its color index. It is spliced in lockstep with `board` on every clear.
+- **Power-up tracking**: a `powerBoard` matrix mirrors `board` and marks which landed cells carry a Lightning mark, since a board cell value already doubles as its color index. Both grids are passed together to the `engine.js` helpers that clear them, so they are always mutated in lockstep.
 
 ### Game flow
 
@@ -215,17 +219,18 @@ When a newly generated piece already collides on appearing (`spawn`), `endGame()
 
 ## Customization
 
-Some parameters that are easy to tweak in `game.js`:
+Some parameters that are easy to tweak:
 
-| Constant       | Meaning                             | Default               |
-| -------------- | ----------------------------------- | --------------------- |
-| `COLS`         | Board columns                       | `10`                  |
-| `ROWS`         | Board rows                          | `20`                  |
-| `BLOCK`        | Size in pixels of each cell         | `30`                  |
-| `COLORS`       | Color palette per piece type        | 7 colors              |
-| `LINE_SCORES`  | Points for 1, 2, 3 or 4 cleared lines | `[0,100,300,500,800]` |
-| `dropInterval` | Initial drop speed in ms            | `1000`                |
-| `POWER_CHANCE` | Odds that a piece carries a Lightning mark | `0.15`         |
+| Constant                  | File        | Meaning                                    | Default               |
+| ------------------------- | ----------- | ------------------------------------------ | --------------------- |
+| `COLS`                    | `game.js`   | Board columns                              | `10`                  |
+| `ROWS`                    | `game.js`   | Board rows                                 | `20`                  |
+| `BLOCK`                   | `game.js`   | Size in pixels of each cell                | `30`                  |
+| `COLORS`                  | `game.js`   | Color palette per piece type               | 7 colors              |
+| `dropInterval`            | `game.js`   | Initial drop speed in ms                   | `1000`                |
+| `POWER_CHANCE`            | `game.js`   | Odds that a piece carries a Lightning mark | `0.15`                |
+| `LINE_SCORES`             | `engine.js` | Points for 1, 2, 3 or 4 cleared lines      | `[0,100,300,500,800]` |
+| `LIGHTNING_COLUMN_SCORE`  | `engine.js` | Points for a Lightning column strike       | `50`                  |
 
 > If you change `COLS`, `ROWS` or `BLOCK`, remember to also adjust the `width` and `height` of `<canvas id="board">` in `index.html` so they match (`COLS × BLOCK` by `ROWS × BLOCK`).
 
