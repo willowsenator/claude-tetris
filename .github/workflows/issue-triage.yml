@@ -11,8 +11,6 @@ concurrency:
 
 jobs:
   triage:
-    # Issues that mention @claude are handled by claude.yml; don't double-respond.
-    if: "!contains(github.event.issue.title, '@claude') && !contains(github.event.issue.body, '@claude')"
     runs-on: ubuntu-latest
     permissions:
       contents: read
