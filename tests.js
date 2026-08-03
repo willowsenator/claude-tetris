@@ -75,9 +75,19 @@ test('collides detects a filled shape cell at the right edge', () => {
   assertEqual(collides(board, [[1]], 4, 0), true);
 });
 
+test('collides accepts a filled shape cell in the last column', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1]], 3, 0), false);
+});
+
 test('collides detects a filled shape cell at the floor', () => {
   const board = createBoard(3, 4);
   assertEqual(collides(board, [[1]], 0, 3), true);
+});
+
+test('collides accepts a filled shape cell in the bottom row', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1]], 0, 2), false);
 });
 
 test('collides detects a non-zero board cell', () => {
