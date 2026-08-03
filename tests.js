@@ -58,6 +58,44 @@ test('rotateCW transposes non-square shapes', () => {
   assertEqual(rotated[0], [0, 1]);
 });
 
+/* ---- collides ---- */
+
+test('collides returns false when every filled shape cell fits', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1, 1], [1, 0]], 1, 1), false);
+});
+
+test('collides detects a filled shape cell left of the board', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1]], -1, 0), true);
+});
+
+test('collides detects a filled shape cell at the right edge', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1]], 4, 0), true);
+});
+
+test('collides detects a filled shape cell at the floor', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1]], 0, 3), true);
+});
+
+test('collides detects a non-zero board cell', () => {
+  const board = createBoard(3, 4);
+  board[1][2] = 7;
+  assertEqual(collides(board, [[1]], 2, 1), true);
+});
+
+test('collides allows filled shape cells above the board', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[1], [1]], 2, -1), false);
+});
+
+test('collides ignores zero shape cells outside the board', () => {
+  const board = createBoard(3, 4);
+  assertEqual(collides(board, [[0, 1, 0]], -1, 0), false);
+});
+
 /* ---- clearRowAt ---- */
 
 test('clearRowAt removes the row and shifts everything above down', () => {

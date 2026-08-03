@@ -23,6 +23,21 @@ function rotateCW(shape) {
   return result;
 }
 
+function collides(board, shape, ox, oy) {
+  const rows = board.length;
+  const cols = board[0].length;
+  for (let r = 0; r < shape.length; r++) {
+    for (let c = 0; c < shape[r].length; c++) {
+      if (!shape[r][c]) continue;
+      const nx = ox + c;
+      const ny = oy + r;
+      if (nx < 0 || nx >= cols || ny >= rows) return true;
+      if (ny >= 0 && board[ny][nx] !== 0) return true;
+    }
+  }
+  return false;
+}
+
 /* Removes row r in place and pushes a blank row on top, like a natural line clear. */
 function clearRowAt(board, r) {
   board.splice(r, 1);
