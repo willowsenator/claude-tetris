@@ -84,16 +84,7 @@ function randomPiece() {
 }
 
 function collide(shape, ox, oy) {
-  for (let r = 0; r < shape.length; r++) {
-    for (let c = 0; c < shape[r].length; c++) {
-      if (!shape[r][c]) continue;
-      const nx = ox + c;
-      const ny = oy + r;
-      if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
-      if (ny >= 0 && board[ny][nx]) return true;
-    }
-  }
-  return false;
+  return collides(board, shape, ox, oy);
 }
 
 function tryRotate() {
