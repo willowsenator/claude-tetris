@@ -144,7 +144,8 @@ Provides the look and feel: a light and a dark theme built from CSS custom prope
 ### 3. `engine.js`
 
 Holds the pure helpers that need no DOM and no game state, so the same code runs in the game and
-in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), clearing
+in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), collision
+(`collides`), clearing
 (`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
 (`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
 table), the loop-continuation rule (`shouldScheduleFrame`) and the scoring constants. The dividing
