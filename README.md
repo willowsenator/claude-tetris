@@ -114,14 +114,26 @@ scoring branch are all specific to Lightning today.
 
 ## Tests
 
-The pure board logic in `engine.js` is covered by a dependency-free test page. Open it the same
-way as the game:
+The pure board logic in `engine.js` is covered by a dependency-free suite that runs two ways.
+
+As a page, opened like the game:
 
 ```bash
 xdg-open tests.html
 ```
 
 The page lists every test and a `N passed, M failed` summary (also logged to the console).
+
+Or headlessly, with no runner and no dependency:
+
+```bash
+node -e "$(cat engine.js; cat tests.js)"
+```
+
+This prints the same summary, names each failure, and **exits 0 when everything passes and 1 when
+anything fails** — so a script, a CI job or an agent can act on the result. `tests.js` picks its
+reporting form at runtime: it writes into the page when a `document` exists, and sets the exit code
+when one does not.
 
 ---
 
@@ -217,7 +229,7 @@ under the overlay, without the piece that failed to spawn.
 ├── style.css       # Game styles (light / dark themes)
 ├── engine.js       # Pure board helpers and the POWERUPS table
 ├── game.js         # All the Tetris logic
-├── tests.html      # Test page for engine.js
+├── tests.html      # Test page for engine.js (the suite also runs under node)
 ├── tests.js        # Tests and the tiny runner
 └── README.md
 ```
