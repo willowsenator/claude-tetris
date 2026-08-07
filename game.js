@@ -137,9 +137,7 @@ function usePowerUp() {
 }
 
 function ghostY() {
-  let gy = current.y;
-  while (!collide(current.shape, current.x, gy + 1)) gy++;
-  return gy;
+  return dropPosition(board, current.shape, current.x, current.y);
 }
 
 function hardDrop() {

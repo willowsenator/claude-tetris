@@ -38,6 +38,12 @@ function collides(board, shape, ox, oy) {
   return false;
 }
 
+function dropPosition(board, shape, ox, oy) {
+  let y = oy;
+  while (!collides(board, shape, ox, y + 1)) y++;
+  return y;
+}
+
 /* Removes row r in place and pushes a blank row on top, like a natural line clear. */
 function clearRowAt(board, r) {
   board.splice(r, 1);
