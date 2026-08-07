@@ -4,15 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Vanilla-JS Tetris: `index.html` + `style.css` + `engine.js` + `game.js`. No `package.json`, no bundler, no transpiler, no dependencies. Tests are a dependency-free browser page (`tests.html` + `tests.js`) covering `engine.js` only.
+Vanilla-JS Tetris: `index.html` + `style.css` + `engine.js` + `game.js`. No `package.json`, no bundler, no transpiler, no dependencies. Tests are a dependency-free suite (`tests.html` + `tests.js`) covering `engine.js` only; it runs either as a browser page or headlessly under `node`, with an exit code.
 
 ## Running
 
 ```bash
 xdg-open index.html          # direct file open works (no module imports, no fetch)
-xdg-open tests.html          # test suite; prints "N passed, M failed" on the page and in the console
+xdg-open tests.html          # test suite as a page; results render into the page
 python3 -m http.server 8000  # or any static server
+
+node -e "$(cat engine.js; cat tests.js)"   # same suite headlessly; exits 0 green, 1 on any failure
 ```
+
+The headless form is the gate: it prints `N passed, M failed`, names each failure, and **sets the exit code**, so a script or an agent can act on the result. It needs no runner and no dependency — `tests.js` writes into the page when a `document` exists and sets `process.exitCode` when one does not. Both forms run the same tests over the same `engine.js`.
 
 There is no build or lint command. New logic that can be expressed as a pure function belongs in `engine.js` with a test in `tests.js` (TDD rule in the global CLAUDE.md); anything that needs the DOM or mutable game state stays in `game.js` and is verified by hand in the browser. Adding real tooling (a runner, a package manager) still needs discussion with the user — "zero dependencies / zero build" is a stated property of the project.
 

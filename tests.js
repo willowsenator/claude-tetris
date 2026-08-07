@@ -478,14 +478,24 @@ const summary = `${passed} passed, ${failed} failed`;
 console.log(summary);
 results.filter(r => !r.ok).forEach(r => console.log(`FAIL ${r.name} — ${r.message}`));
 
-const summaryEl = document.getElementById('summary');
-summaryEl.textContent = summary;
-summaryEl.style.color = failed ? 'var(--overlay-title)' : 'var(--value)';
+/* The suite reports two ways. In the browser the page is the report, so results
+   are written into it. Run headlessly there is no page, and the only thing a
+   caller can act on is the exit code — leaving it unset made a green run and a
+   failing one indistinguishable, which is why nothing automated could use this
+   suite. `process` is checked separately from `document` because neither implies
+   the other. */
+if (typeof document !== 'undefined') {
+  const summaryEl = document.getElementById('summary');
+  summaryEl.textContent = summary;
+  summaryEl.style.color = failed ? 'var(--overlay-title)' : 'var(--value)';
 
-const list = document.getElementById('results');
-results.forEach(r => {
-  const li = document.createElement('li');
-  li.className = r.ok ? 'test-pass' : 'test-fail';
-  li.textContent = `${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ' — ' + r.message}`;
-  list.appendChild(li);
-});
+  const list = document.getElementById('results');
+  results.forEach(r => {
+    const li = document.createElement('li');
+    li.className = r.ok ? 'test-pass' : 'test-fail';
+    li.textContent = `${r.ok ? '✓' : '✗'} ${r.name}${r.ok ? '' : ' — ' + r.message}`;
+    list.appendChild(li);
+  });
+} else if (typeof process !== 'undefined') {
+  process.exitCode = failed ? 1 : 0;
+}
