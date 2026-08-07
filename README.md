@@ -144,8 +144,8 @@ Provides the look and feel: a light and a dark theme built from CSS custom prope
 ### 3. `engine.js`
 
 Holds the pure helpers that need no DOM and no game state, so the same code runs in the game and
-in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), collision
-(`collides`), clearing
+in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), collision and the
+landing row a piece drops to (`collides`, `dropPosition`), clearing
 (`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
 (`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
 table), the loop-continuation rule (`shouldScheduleFrame`) and the scoring constants. The dividing
@@ -167,7 +167,7 @@ Contains all the game logic. Broadly:
 - **Line clearing** (`clearLines`): delegates to `clearFullRows` in `engine.js`, which walks the board from the bottom up removing every full row and inserting an empty one at the top, and reports how many Lightning marks the cleared rows carried.
 - **Scoring**: uses the classic table `[0, 100, 300, 500, 800]` multiplied by the current level; hard drop adds 2 points per cell travelled and soft drop 1 point per row.
 - **Level and speed**: the level goes up every 10 lines; drop speed is computed as `max(100, 1000 − (level − 1) × 90)` milliseconds.
-- **Ghost piece** (`ghostY`): projects the final position of the current piece downwards and draws it with `globalAlpha = 0.2`.
+- **Ghost piece** (`dropPosition` / `ghostY`): the tested engine helper projects the final position of the current piece downwards; `ghostY` binds it to game state, and the result is drawn with `globalAlpha = 0.2`.
 - **Power-up tracking**: a `powerBoard` matrix mirrors `board` and marks which landed cells carry a Lightning mark, since a board cell value already doubles as its color index. Both grids are passed together to the `engine.js` helpers that clear them, so they are always mutated in lockstep.
 
 ### Game flow

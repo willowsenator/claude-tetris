@@ -106,6 +106,51 @@ test('collides ignores zero shape cells outside the board', () => {
   assertEqual(collides(board, [[0, 1, 0]], -1, 0), false);
 });
 
+/* ---- dropPosition ---- */
+
+test('dropPosition lands a shape on the bottom row of an empty board', () => {
+  const board = createBoard(4, 3);
+  assertEqual(dropPosition(board, [[1]], 1, 0), 3);
+});
+
+test('dropPosition leaves a shape that is already resting on the floor in place', () => {
+  const board = createBoard(4, 3);
+  assertEqual(dropPosition(board, [[1]], 1, 3), 3);
+});
+
+test('dropPosition lands a shape directly on top of occupied cells', () => {
+  const board = createBoard(5, 3);
+  board[4][1] = 7;
+  board[3][1] = 7;
+  assertEqual(dropPosition(board, [[1]], 1, 0), 2);
+});
+
+/* The other landing cases use a single-column shape, where every column of the
+   piece meets the stack at the same height. A piece spanning columns of unequal
+   height is where a landing rule goes wrong: it has to stop at the highest
+   obstruction underneath it rather than sinking into the shallower column. */
+test('dropPosition rests a wide shape on its highest obstruction', () => {
+  const board = createBoard(5, 3);
+  board[4][0] = 7;
+  assertEqual(dropPosition(board, [[1, 1]], 0, 0), 3);
+});
+
+test('dropPosition handles a starting row above the board', () => {
+  const board = createBoard(4, 3);
+  assertEqual(dropPosition(board, [[1], [1]], 1, -1), 2);
+});
+
+test('dropPosition does not mutate the board or shape', () => {
+  const board = createBoard(4, 3);
+  board[3][1] = 7;
+  const shape = [[1, 1]];
+  const boardBefore = board.map(row => [...row]);
+  const shapeBefore = shape.map(row => [...row]);
+  dropPosition(board, shape, 0, 0);
+  assertEqual(board, boardBefore, 'board');
+  assertEqual(shape, shapeBefore, 'shape');
+});
+
 /* ---- clearRowAt ---- */
 
 test('clearRowAt removes the row and shifts everything above down', () => {
