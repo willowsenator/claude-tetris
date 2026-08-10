@@ -4,17 +4,6 @@ const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 
-const COLORS = [
-  null,
-  '#4dd0e1', // I - cyan
-  '#ffd54f', // O - yellow
-  '#ba68c8', // T - purple
-  '#81c784', // S - green
-  '#e57373', // Z - red
-  '#7986cb', // J - indigo
-  '#ffb74d', // L - orange
-];
-
 const PIECES = [
   null,
   [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]], // I
@@ -42,10 +31,21 @@ const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggleBtn = document.getElementById('theme-toggle');
+const skinSelect = document.getElementById('skin-select');
 
 const THEME_KEY = 'tetris-theme';
+const SKIN_KEY = 'tetris-skin';
 
-let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor;
+let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor, skin;
+
+/* The canvas cannot read CSS variables while drawing, so the themed colours are
+   cached here. Both the theme and the skin feed them, which is why every change
+   to either one comes back through this function. */
+function cacheCanvasColors() {
+  const styles = getComputedStyle(document.body);
+  gridColor = styles.getPropertyValue('--skin-grid-line').trim();
+  powerColor = styles.getPropertyValue('--skin-power').trim();
+}
 
 function applyTheme(theme) {
   if (theme === 'dark') {
@@ -57,9 +57,8 @@ function applyTheme(theme) {
     themeToggleBtn.textContent = '🌙';
     themeToggleBtn.setAttribute('aria-label', 'Switch to dark theme');
   }
-  const styles = getComputedStyle(document.body);
-  gridColor = styles.getPropertyValue('--grid-line').trim();
-  powerColor = styles.getPropertyValue('--power').trim();
+  cacheCanvasColors();
+  redraw();
 }
 
 function toggleTheme() {
@@ -68,6 +67,38 @@ function toggleTheme() {
   applyTheme(next);
 }
 
+/* Switching skin or theme must show at once, and the loop may not be running to
+   do it — the game can be paused or over. At load there is nothing to paint yet:
+   init() has not built the board, so this is a no-op until it has. */
+function redraw() {
+  if (!board || !current || !next) return;
+  draw();
+  drawNext();
+}
+
+function applySkin(id) {
+  skin = resolveSkin(id);
+  document.body.setAttribute('data-skin', skin.id);
+  skinSelect.value = skin.id;
+  cacheCanvasColors();
+  redraw();
+}
+
+SKINS.forEach(entry => {
+  const option = document.createElement('option');
+  option.value = entry.id;
+  option.textContent = entry.label;
+  skinSelect.appendChild(option);
+});
+
+skinSelect.addEventListener('change', () => {
+  localStorage.setItem(SKIN_KEY, skinSelect.value);
+  applySkin(skinSelect.value);
+});
+
+// The skin goes on first: applyTheme re-reads the same variables afterwards, so
+// whichever runs last leaves the cache correct for both.
+applySkin(localStorage.getItem(SKIN_KEY));
 applyTheme(localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light');
 themeToggleBtn.addEventListener('click', toggleTheme);
 
@@ -179,15 +210,87 @@ function updateHUD() {
   powerEl.textContent = powerCharges;
 }
 
+/* Traces a rounded rectangle. roundRect is not in every browser this runs on and
+   there is no build step to polyfill it, so the manual path is a fallback, not a
+   micro-optimisation. Leaves the path current; the caller fills it. */
+function roundedRectPath(context, x, y, w, h, r) {
+  const radius = Math.max(0, Math.min(r, w / 2, h / 2));
+  context.beginPath();
+  if (typeof context.roundRect === 'function') {
+    context.roundRect(x, y, w, h, radius);
+    return;
+  }
+  context.moveTo(x + radius, y);
+  context.arcTo(x + w, y, x + w, y + h, radius);
+  context.arcTo(x + w, y + h, x, y + h, radius);
+  context.arcTo(x, y + h, x, y, radius);
+  context.arcTo(x, y, x + w, y, radius);
+  context.closePath();
+}
+
+/* Checkerboard dither plus a hard outline. The cell size is derived from the
+   block so the pattern reads the same on the board and in the NEXT preview. */
+function drawPixelTexture(context, px, py, s) {
+  const unit = Math.max(2, Math.round(s / 7));
+  context.fillStyle = 'rgba(0,0,0,0.18)';
+  for (let ry = 0; ry * unit < s; ry++)
+    for (let rx = 0; rx * unit < s; rx++)
+      if ((rx + ry) % 2 === 0)
+        context.fillRect(
+          px + rx * unit,
+          py + ry * unit,
+          Math.min(unit, s - rx * unit),
+          Math.min(unit, s - ry * unit),
+        );
+  context.fillStyle = 'rgba(0,0,0,0.35)';
+  context.fillRect(px, py, s, 1);
+  context.fillRect(px, py + s - 1, s, 1);
+  context.fillRect(px, py, 1, s);
+  context.fillRect(px + s - 1, py, 1, s);
+}
+
+/* The single rendering primitive for both canvases, dispatched on the active
+   skin. It still no-ops on an empty cell — skinColor returns null for index 0 —
+   which is why the draw loops pass raw cell values without guarding. Every piece
+   of context state it sets (alpha, shadow) is reset before it returns: a shadow
+   left behind bleeds onto the grid, the ghost and the NEXT preview. */
 function drawBlock(context, x, y, colorIndex, size, alpha) {
-  if (!colorIndex) return;
-  const color = COLORS[colorIndex];
+  const color = skinColor(skin, colorIndex);
+  if (!color) return;
+  const px = x * size + 1;
+  const py = y * size + 1;
+  const s = size - 2;
   context.globalAlpha = alpha ?? 1;
   context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+
+  switch (skin.blockStyle) {
+    case 'glow':
+      context.shadowBlur = skin.glow;
+      context.shadowColor = color;
+      context.fillRect(px, py, s, s);
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+      context.strokeStyle = 'rgba(255,255,255,0.7)';
+      context.lineWidth = 1;
+      context.strokeRect(px + 0.5, py + 0.5, s - 1, s - 1);
+      break;
+    case 'rounded':
+      roundedRectPath(context, px, py, s, s, skin.radius);
+      context.fill();
+      roundedRectPath(context, px + 2, py + 2, s - 4, Math.max(2, s * 0.3), skin.radius / 2);
+      context.fillStyle = 'rgba(255,255,255,0.38)';
+      context.fill();
+      break;
+    case 'pixel':
+      context.fillRect(px, py, s, s);
+      drawPixelTexture(context, px, py, s);
+      break;
+    default:
+      context.fillRect(px, py, s, s);
+      // highlight
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(px, py, s, 4);
+  }
   context.globalAlpha = 1;
 }
 

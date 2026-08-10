@@ -46,6 +46,7 @@ It is a playable version of classic Tetris with all the mechanics you would expe
 - **Levels** that go up every 10 lines and speed up the fall.
 - **Pause** and **Game Over** with a restart option.
 - A **Lightning power-up** that wipes a whole row or column.
+- Four **visual skins** — Retro, Neon, Pastel and Pixel art — switchable from the side panel and remembered between sessions.
 
 ---
 
@@ -146,12 +147,12 @@ The game is made up of four files that work together:
 Defines the visual structure:
 
 - A **300 × 600** pixel `<canvas id="board">` where the board is rendered.
-- A side panel with `SCORE`, `LINES`, `LEVEL`, `LIGHTNING`, the next-piece preview and the control list.
+- A side panel with `SCORE`, `LINES`, `LEVEL`, `LIGHTNING`, the next-piece preview, the skin selector and the control list.
 - An overlay for the **PAUSED** and **GAME OVER** states.
 
 ### 2. `style.css`
 
-Provides the look and feel: a light and a dark theme built from CSS custom properties (including `--power`, the colour of the Lightning mark), monospaced typography for the counters and _backdrop blur_ on the overlays.
+Provides the look and feel: a light and a dark theme built from CSS custom properties, monospaced typography for the counters and _backdrop blur_ on the overlays. The three colours the canvas paints with — `--skin-board-bg`, `--skin-grid-line` and `--skin-power` (the Lightning mark) — are declared per skin as well as per theme, so a skin and the light/dark toggle compose instead of fighting.
 
 ### 3. `engine.js`
 
@@ -245,7 +246,7 @@ Some parameters that are easy to tweak:
 | `COLS`                    | `game.js`   | Board columns                              | `10`                  |
 | `ROWS`                    | `game.js`   | Board rows                                 | `20`                  |
 | `BLOCK`                   | `game.js`   | Size in pixels of each cell                | `30`                  |
-| `COLORS`                  | `game.js`   | Color palette per piece type               | 7 colors              |
+| `SKINS`                   | `engine.js` | Visual skins and their piece palettes      | 4 skins               |
 | `dropInterval`            | `game.js`   | Initial drop speed in ms                   | `1000`                |
 | `POWER_CHANCE`            | `game.js`   | Odds that a piece carries a Lightning mark | `0.15`                |
 | `LINE_SCORES`             | `engine.js` | Points for 1, 2, 3 or 4 cleared lines      | `[0,100,300,500,800]` |
