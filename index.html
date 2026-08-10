@@ -55,7 +55,54 @@
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>
         <p id="overlay-score"></p>
+
+        <div id="lb-overlay-panel" class="lb-panel hidden">
+          <form id="lb-form" class="lb-form hidden">
+            <label class="lb-label" for="lb-name-input">Your name</label>
+            <input id="lb-name-input" class="lb-input" type="text" maxlength="12" autocomplete="off" />
+            <button id="lb-save-btn" class="lb-btn" type="submit">Save score</button>
+          </form>
+          <table class="lb-table">
+            <caption class="lb-caption">Best scores</caption>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Name</th>
+                <th scope="col">Score</th>
+                <th scope="col" title="Longest run of consecutive line-clearing locks">Combo</th>
+                <th scope="col" title="Largest single clear">Lines</th>
+              </tr>
+            </thead>
+            <tbody id="lb-overlay-body"></tbody>
+          </table>
+          <p id="lb-overlay-empty" class="lb-empty">No scores yet.</p>
+        </div>
+
         <button id="restart-btn">Restart</button>
+      </div>
+    </div>
+
+    <div id="start-screen" class="start-screen" role="dialog" aria-modal="true" aria-labelledby="start-heading">
+      <div class="start-box">
+        <h2 id="start-heading" class="start-heading">TETRIS</h2>
+        <table class="lb-table">
+          <caption class="lb-caption">Best scores</caption>
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">Name</th>
+              <th scope="col">Score</th>
+              <th scope="col" title="Longest run of consecutive line-clearing locks">Combo</th>
+              <th scope="col" title="Largest single clear">Lines</th>
+            </tr>
+          </thead>
+          <tbody id="start-lb-body"></tbody>
+        </table>
+        <p id="start-lb-empty" class="lb-empty">No scores yet.</p>
+        <div class="start-actions">
+          <button id="start-play-btn" class="start-btn" type="button">Play</button>
+          <button id="start-reset-btn" class="start-btn start-btn-secondary" type="button">Reset leaderboard</button>
+        </div>
       </div>
     </div>
   </div>

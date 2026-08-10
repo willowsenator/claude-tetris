@@ -116,14 +116,17 @@ function updateLevel() {
   dropInterval = Math.max(100, 1000 - (level - 1) * 90);
 }
 
+/* Returns how many rows this clear removed, which is what the caller needs to
+   keep the combo and max-clear statistics. */
 function clearLines() {
   const { cleared, charges } = clearFullRows(board, powerBoard);
-  if (!cleared) return;
+  if (!cleared) return 0;
   powerCharges += charges;
   lines += cleared;
   score += (LINE_SCORES[cleared] || 0) * level;
   updateLevel();
   updateHUD();
+  return cleared;
 }
 
 function usePowerUp() {
@@ -157,9 +160,14 @@ function softDrop() {
   }
 }
 
+/* Every lock passes through here, including the ones that clear nothing, which
+   is what lets the combo run be broken as well as extended. */
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  combo = nextCombo(combo, cleared);
+  if (combo > bestCombo) bestCombo = combo;
+  if (cleared > maxLines) maxLines = cleared;
   spawn();
 }
 
@@ -266,7 +274,10 @@ function endGame() {
   draw();
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Score: ${score.toLocaleString()}`;
+  // The overlay is revealed first: the leaderboard moves focus into the name
+  // input, and an element inside a display:none subtree cannot take focus.
   overlay.classList.remove('hidden');
+  showGameOverLeaderboard();
 }
 
 function togglePause() {
@@ -306,6 +317,9 @@ function init() {
   powerCharges = 0;
   score = 0;
   lines = 0;
+  combo = 0;
+  bestCombo = 0;
+  maxLines = 0;
   paused = false;
   gameOver = false;
   updateLevel();
@@ -315,11 +329,15 @@ function init() {
   spawn();
   updateHUD();
   overlay.classList.add('hidden');
+  lbPanel.classList.add('hidden');
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
+  // Nothing has been played yet: the start screen owns the page and there is no
+  // piece for any key to act on.
+  if (!current) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (paused || gameOver) return;
   switch (e.code) {
@@ -349,4 +367,101 @@ document.addEventListener('keydown', e => {
 
 restartBtn.addEventListener('click', init);
 
-init();
+/* ---- Leaderboard ----------------------------------------------------------
+   The list rules are pure and live in engine.js; what is left here is storage,
+   rendering and the game-over form. */
+
+const LEADERBOARD_KEY = 'tetris-leaderboard';
+
+const startScreen = document.getElementById('start-screen');
+const startPlayBtn = document.getElementById('start-play-btn');
+const startResetBtn = document.getElementById('start-reset-btn');
+const startBody = document.getElementById('start-lb-body');
+const startEmpty = document.getElementById('start-lb-empty');
+const lbPanel = document.getElementById('lb-overlay-panel');
+const lbForm = document.getElementById('lb-form');
+const lbNameInput = document.getElementById('lb-name-input');
+const lbOverlayBody = document.getElementById('lb-overlay-body');
+const lbOverlayEmpty = document.getElementById('lb-overlay-empty');
+
+let leaderboard, bestCombo, maxLines, combo;
+
+/* Storage holds JSON written by an older version, another tab, or a user with a
+   console, so both the parse and the read itself are treated as untrusted: a
+   corrupt value costs the leaderboard, never the game. */
+function loadLeaderboard() {
+  try {
+    return normalizeLeaderboard(JSON.parse(localStorage.getItem(LEADERBOARD_KEY)), LEADERBOARD_MAX);
+  } catch (e) {
+    return emptyLeaderboard();
+  }
+}
+
+function saveLeaderboard() {
+  try {
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+  } catch (e) {
+    // A full or blocked storage only costs persistence; the game carries on.
+  }
+}
+
+function renderLeaderboard(body, emptyEl, highlightIndex) {
+  body.replaceChildren();
+  emptyEl.classList.toggle('hidden', leaderboard.length > 0);
+  leaderboard.forEach((entry, i) => {
+    const tr = document.createElement('tr');
+    if (i === highlightIndex) tr.classList.add('lb-row-current');
+    const cells = [i + 1, entry.name, entry.score.toLocaleString(), entry.bestCombo, entry.maxLines];
+    cells.forEach(value => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+function renderStartLeaderboard() {
+  renderLeaderboard(startBody, startEmpty, -1);
+}
+
+/* Shows the table under the GAME OVER banner, plus the name form when the run
+   earned a place. The highlight only appears once the entry is actually saved. */
+function showGameOverLeaderboard() {
+  const qualifies = qualifiesForLeaderboard(leaderboard, score, LEADERBOARD_MAX);
+  lbPanel.classList.remove('hidden');
+  lbForm.classList.toggle('hidden', !qualifies);
+  renderLeaderboard(lbOverlayBody, lbOverlayEmpty, -1);
+  if (qualifies) {
+    lbNameInput.value = '';
+    lbNameInput.focus();
+  }
+}
+
+lbForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const name = lbNameInput.value.trim() || LEADERBOARD_DEFAULT_NAME;
+  const result = insertLeaderboardEntry(
+    leaderboard, { name, score, bestCombo, maxLines }, LEADERBOARD_MAX);
+  leaderboard = result.entries;
+  saveLeaderboard();
+  lbForm.classList.add('hidden');
+  renderLeaderboard(lbOverlayBody, lbOverlayEmpty, result.index);
+  renderStartLeaderboard();
+  restartBtn.focus();
+});
+
+startPlayBtn.addEventListener('click', () => {
+  startScreen.classList.add('hidden');
+  init();
+});
+
+startResetBtn.addEventListener('click', () => {
+  if (!confirm('Erase every saved score? This cannot be undone.')) return;
+  leaderboard = emptyLeaderboard();
+  saveLeaderboard();
+  renderStartLeaderboard();
+});
+
+leaderboard = loadLeaderboard();
+renderStartLeaderboard();

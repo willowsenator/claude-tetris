@@ -469,6 +469,161 @@ test('a game that is both finished and paused stops the loop', () => {
   assertEqual(shouldScheduleFrame({ gameOver: true, paused: true }), false);
 });
 
+/* ---- emptyLeaderboard ---- */
+
+test('an empty leaderboard has no entries', () => {
+  assertEqual(emptyLeaderboard(), []);
+});
+
+test('each empty leaderboard is a fresh array', () => {
+  const a = emptyLeaderboard();
+  a.push({ name: 'A', score: 1, bestCombo: 0, maxLines: 0 });
+  assertEqual(emptyLeaderboard(), []);
+});
+
+/* ---- qualifiesForLeaderboard ---- */
+
+function lbEntry(name, score) {
+  return { name, score, bestCombo: 0, maxLines: 0 };
+}
+
+test('any score qualifies for an empty leaderboard', () => {
+  assertEqual(qualifiesForLeaderboard([], 10, 5), true);
+});
+
+test('a score of zero still qualifies while there is a free slot', () => {
+  assertEqual(qualifiesForLeaderboard([], 0, 5), true);
+});
+
+test('a score qualifies while the leaderboard is not full', () => {
+  assertEqual(qualifiesForLeaderboard([lbEntry('A', 900)], 1, 5), true);
+});
+
+test('a score above the lowest entry qualifies on a full leaderboard', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  assertEqual(qualifiesForLeaderboard(full, 150, 5), true);
+});
+
+test('a score below every entry does not qualify on a full leaderboard', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  assertEqual(qualifiesForLeaderboard(full, 50, 5), false);
+});
+
+test('a score tied with the lowest entry does not displace it', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  assertEqual(qualifiesForLeaderboard(full, 100, 5), false);
+});
+
+test('a score of zero does not qualify on a full leaderboard', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  assertEqual(qualifiesForLeaderboard(full, 0, 5), false);
+});
+
+/* ---- insertLeaderboardEntry ---- */
+
+test('inserting into an empty leaderboard puts the entry first', () => {
+  const result = insertLeaderboardEntry([], lbEntry('A', 100), 5);
+  assertEqual(result.index, 0);
+  assertEqual(result.entries, [lbEntry('A', 100)]);
+});
+
+test('a new entry lands in score order', () => {
+  const entries = [lbEntry('A', 300), lbEntry('B', 100)];
+  const result = insertLeaderboardEntry(entries, lbEntry('C', 200), 5);
+  assertEqual(result.index, 1);
+  assertEqual(result.entries.map(e => e.name), ['A', 'C', 'B']);
+});
+
+test('a tie keeps the older entry ahead of the newcomer', () => {
+  const entries = [lbEntry('A', 200), lbEntry('B', 100)];
+  const result = insertLeaderboardEntry(entries, lbEntry('C', 200), 5);
+  assertEqual(result.index, 1);
+  assertEqual(result.entries.map(e => e.name), ['A', 'C', 'B']);
+});
+
+test('inserting never grows the leaderboard past its maximum', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  const result = insertLeaderboardEntry(full, lbEntry('New', 450), 5);
+  assertEqual(result.entries.length, 5);
+  assertEqual(result.index, 1);
+  assertEqual(result.entries.map(e => e.score), [500, 450, 400, 300, 200]);
+});
+
+test('an entry pushed off the end reports no row to highlight', () => {
+  const full = [500, 400, 300, 200, 100].map((s, i) => lbEntry(`P${i}`, s));
+  const result = insertLeaderboardEntry(full, lbEntry('New', 10), 5);
+  assertEqual(result.index, -1);
+  assertEqual(result.entries.map(e => e.score), [500, 400, 300, 200, 100]);
+});
+
+test('inserting leaves the original list untouched', () => {
+  const entries = [lbEntry('A', 100)];
+  insertLeaderboardEntry(entries, lbEntry('B', 200), 5);
+  assertEqual(entries.map(e => e.name), ['A']);
+});
+
+test('an inserted entry keeps its combo and line statistics', () => {
+  const entry = { name: 'A', score: 100, bestCombo: 3, maxLines: 4 };
+  assertEqual(insertLeaderboardEntry([], entry, 5).entries[0], entry);
+});
+
+/* ---- normalizeLeaderboard ---- */
+
+test('a missing stored leaderboard normalizes to an empty list', () => {
+  assertEqual(normalizeLeaderboard(null, 5), []);
+});
+
+test('a stored value that is not an array normalizes to an empty list', () => {
+  assertEqual(normalizeLeaderboard('garbage', 5), []);
+  assertEqual(normalizeLeaderboard({ score: 10 }, 5), []);
+  assertEqual(normalizeLeaderboard(42, 5), []);
+});
+
+test('entries that are not objects are dropped', () => {
+  assertEqual(normalizeLeaderboard(['x', null, 7], 5), []);
+});
+
+test('an entry with a non-numeric score is dropped', () => {
+  const raw = [{ name: 'A', score: 'lots' }, { name: 'B', score: 10 }];
+  assertEqual(normalizeLeaderboard(raw, 5).map(e => e.name), ['B']);
+});
+
+test('a stored leaderboard comes back sorted by score', () => {
+  const raw = [{ name: 'A', score: 10 }, { name: 'B', score: 30 }, { name: 'C', score: 20 }];
+  assertEqual(normalizeLeaderboard(raw, 5).map(e => e.name), ['B', 'C', 'A']);
+});
+
+test('a stored leaderboard is truncated to the maximum', () => {
+  const raw = [10, 20, 30, 40, 50, 60].map(s => ({ name: 's' + s, score: s }));
+  assertEqual(normalizeLeaderboard(raw, 5).map(e => e.score), [60, 50, 40, 30, 20]);
+});
+
+test('missing fields are filled with safe defaults', () => {
+  assertEqual(normalizeLeaderboard([{ score: 10 }], 5),
+    [{ name: 'Anonymous', score: 10, bestCombo: 0, maxLines: 0 }]);
+});
+
+test('out-of-range statistics are coerced to whole non-negative numbers', () => {
+  const raw = [{ name: 'A', score: 10.7, bestCombo: -3, maxLines: 2.9 }];
+  assertEqual(normalizeLeaderboard(raw, 5),
+    [{ name: 'A', score: 10, bestCombo: 0, maxLines: 2 }]);
+});
+
+test('a non-string name is replaced rather than kept', () => {
+  assertEqual(normalizeLeaderboard([{ name: { evil: true }, score: 5 }], 5)[0].name, 'Anonymous');
+});
+
+/* ---- nextCombo ---- */
+
+test('a lock that clears lines extends the combo', () => {
+  assertEqual(nextCombo(0, 1), 1);
+  assertEqual(nextCombo(2, 4), 3);
+});
+
+test('a lock that clears nothing breaks the combo', () => {
+  assertEqual(nextCombo(5, 0), 0);
+});
+
 /* ---- report ---- */
 
 const passed = results.filter(r => r.ok).length;
