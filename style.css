@@ -251,3 +251,132 @@ kbd {
 #restart-btn:hover {
   background: var(--restart-hover);
 }
+
+/* ---- Pause menu ---- */
+.pause-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-bg);
+  backdrop-filter: blur(4px);
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.pause-overlay.hidden {
+  display: none;
+}
+
+.pause-overlay:focus {
+  outline: none;
+}
+
+.pause-box {
+  min-width: 220px;
+  padding: 24px;
+  border: 1px solid var(--board-border);
+  border-radius: 8px;
+  background: var(--board-bg);
+  box-shadow: 0 8px 30px var(--board-shadow);
+}
+
+/* The two views of the menu live side by side; only one is shown at a time. */
+.pause-box > .hidden {
+  display: none;
+}
+
+.pause-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-align: center;
+  color: var(--title);
+  margin-bottom: 18px;
+}
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pause-btn {
+  width: 100%;
+  background: var(--restart-bg);
+  color: var(--restart-text);
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pause-btn:hover {
+  background: var(--restart-hover);
+}
+
+.pause-btn:focus-visible {
+  outline: 2px solid var(--title);
+  outline-offset: 2px;
+}
+
+.pause-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.pause-field-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  color: var(--label);
+  text-transform: uppercase;
+}
+
+.pause-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--board-border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.pause-select:focus-visible {
+  outline: 2px solid var(--title);
+  outline-offset: 2px;
+}
+
+.pause-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--controls-text);
+  text-align: center;
+}
+
+.pause-controls-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.pause-controls-list li {
+  font-size: 12px;
+  color: var(--controls-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}

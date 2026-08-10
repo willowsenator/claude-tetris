@@ -51,6 +51,37 @@
       </aside>
     </div>
 
+    <div id="pause-menu" class="pause-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-heading" tabindex="-1">
+      <div class="pause-box">
+        <div id="pause-main-view">
+          <p id="pause-heading" class="pause-title">PAUSED</p>
+          <div class="pause-actions">
+            <button id="pause-resume-btn" class="pause-btn" type="button">Resume</button>
+            <button id="pause-restart-btn" class="pause-btn" type="button">Restart</button>
+            <button id="pause-controls-btn" class="pause-btn" type="button">View controls</button>
+          </div>
+          <div class="pause-field">
+            <label class="pause-field-label" for="pause-start-level">Starting level</label>
+            <select id="pause-start-level" class="pause-select"></select>
+          </div>
+          <p class="pause-hint">Applies to the next game.</p>
+        </div>
+
+        <div id="pause-controls-view" class="hidden">
+          <p class="pause-title">CONTROLS</p>
+          <ul class="pause-controls-list">
+            <li><kbd>←</kbd><kbd>→</kbd> move</li>
+            <li><kbd>↑</kbd> / <kbd>X</kbd> rotate</li>
+            <li><kbd>↓</kbd> soft drop</li>
+            <li><kbd>Space</kbd> hard drop</li>
+            <li><kbd>Z</kbd> lightning</li>
+            <li><kbd>P</kbd> / <kbd>Esc</kbd> pause menu</li>
+          </ul>
+          <button id="pause-back-btn" class="pause-btn" type="button">Back</button>
+        </div>
+      </div>
+    </div>
+
     <div id="overlay" class="overlay hidden">
       <div class="overlay-box">
         <p id="overlay-title">GAME OVER</p>

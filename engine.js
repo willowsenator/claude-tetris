@@ -136,10 +136,27 @@ function lightningReward(target, level) {
     : { points: LIGHTNING_COLUMN_SCORE * level, lines: 0 };
 }
 
-/* Whether the animation loop should schedule another frame. A game that has ended
-   or is paused must not advance. The loop has to ask before rescheduling because a
-   frame can end the game from inside itself, and at that point it is too late to
-   cancel: the frame it would cancel is the one already running. */
-function shouldScheduleFrame({ gameOver, paused }) {
-  return !gameOver && !paused;
+/* Whether the animation loop should schedule another frame. A game that has ended,
+   is paused, or has the pause menu open must not advance. The loop has to ask before
+   rescheduling because a frame can end the game from inside itself, and at that point
+   it is too late to cancel: the frame it would cancel is the one already running.
+   `menuOpen` is optional so a caller that knows nothing about the menu still works. */
+function shouldScheduleFrame({ gameOver, paused, menuOpen }) {
+  return !gameOver && !paused && !menuOpen;
+}
+
+/* Keeps a chosen starting level inside 1..max. The value can come from localStorage
+   or from a form control, so it may be a string, a fraction or nothing at all;
+   anything that is not a usable number falls back to level 1. */
+function clampStartLevel(n, max) {
+  const level = Math.floor(Number(n));
+  if (!Number.isFinite(level)) return 1;
+  return Math.min(Math.max(level, 1), max);
+}
+
+/* Milliseconds a piece waits before falling one row at the given level. Kept here
+   rather than inside the level bump so a game can also *start* above level 1 with
+   the right speed. */
+function levelDropInterval(level) {
+  return Math.max(100, 1000 - (level - 1) * 90);
 }
