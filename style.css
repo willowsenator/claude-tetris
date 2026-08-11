@@ -28,6 +28,13 @@
   /* Drawn on top of the pastel piece colours, so it stays dark in both themes. */
   --power: #2a2a35;
   --lb-highlight: rgba(59, 91, 219, 0.16);
+
+  /* Skin-scoped canvas colours. The default skin (Retro) is exactly the theme,
+     which is what keeps it pixel-identical to the pre-skin game; other skins
+     override these under body[data-skin=...] below, per theme. */
+  --skin-board-bg: var(--board-bg);
+  --skin-grid-line: var(--grid-line);
+  --skin-power: var(--power);
 }
 
 body[data-theme='dark'] {
@@ -53,6 +60,53 @@ body[data-theme='dark'] {
   --toggle-border: #3a3a5a;
   --power: #12121a;
   --lb-highlight: rgba(122, 162, 247, 0.22);
+
+  --skin-board-bg: var(--board-bg);
+  --skin-grid-line: var(--grid-line);
+  --skin-power: var(--power);
+}
+
+/* ---- Skins ----
+   Each skin restates the three canvas colours for both themes; a skin that only
+   listed one theme would keep the other theme's board and drop out of step with
+   the toggle. The piece palette itself lives in the SKINS table in engine.js —
+   only what CSS paints (board background, grid, mark) belongs here. */
+body[data-skin='neon'] {
+  --skin-board-bg: #0a0a14;
+  --skin-grid-line: #1f1f3d;
+  --skin-power: #f5f5ff;
+}
+
+body[data-skin='neon'][data-theme='dark'] {
+  --skin-board-bg: #04040a;
+  --skin-grid-line: #16162c;
+  --skin-power: #f5f5ff;
+}
+
+body[data-skin='pastel'] {
+  --skin-board-bg: #fdfbff;
+  --skin-grid-line: #efe7f4;
+  --skin-power: #4a4458;
+}
+
+body[data-skin='pastel'][data-theme='dark'] {
+  --skin-board-bg: #241f2c;
+  --skin-grid-line: #332c3e;
+  /* The mark sits on the pastel block, not on the board, and the piece colours do
+     not follow the theme — so it stays dark here, like the default --power does. */
+  --skin-power: #4a4458;
+}
+
+body[data-skin='pixel'] {
+  --skin-board-bg: #f2f0e4;
+  --skin-grid-line: #ddd9c4;
+  --skin-power: #2b2b1f;
+}
+
+body[data-skin='pixel'][data-theme='dark'] {
+  --skin-board-bg: #16160f;
+  --skin-grid-line: #2b2b1e;
+  --skin-power: #f0eede;
 }
 
 body {
@@ -102,6 +156,27 @@ body {
   border-color: var(--title);
 }
 
+.skin-select {
+  background: var(--toggle-bg);
+  color: var(--text);
+  border: 1px solid var(--toggle-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.skin-select:hover {
+  border-color: var(--title);
+}
+
+.skin-select:focus-visible {
+  outline: 2px solid var(--title);
+  outline-offset: 2px;
+}
+
 .game-container {
   display: flex;
   gap: 20px;
@@ -111,7 +186,7 @@ body {
 #board {
   display: block;
   border: 1px solid var(--board-border);
-  background: var(--board-bg);
+  background: var(--skin-board-bg);
   border-radius: 4px;
   box-shadow: 0 0 40px var(--board-shadow);
 }
@@ -149,7 +224,7 @@ body {
 #next-canvas {
   display: block;
   border: 1px solid var(--board-border);
-  background: var(--board-bg);
+  background: var(--skin-board-bg);
   border-radius: 4px;
 }
 

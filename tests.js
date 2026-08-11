@@ -624,6 +624,64 @@ test('a lock that clears nothing breaks the combo', () => {
   assertEqual(nextCombo(5, 0), 0);
 });
 
+/* ---- skins ---- */
+
+test('every skin declares an id, a label and a block style', () => {
+  assertEqual(SKINS.every(s => typeof s.id === 'string' && s.id), true);
+  assertEqual(SKINS.every(s => typeof s.label === 'string' && s.label), true);
+  assertEqual(SKINS.every(s => typeof s.blockStyle === 'string' && s.blockStyle), true);
+});
+
+test('skin ids are unique', () => {
+  assertEqual(new Set(SKINS.map(s => s.id)).size, SKINS.length);
+});
+
+test('the four advertised skins are present', () => {
+  assertEqual(SKINS.map(s => s.id), ['retro', 'neon', 'pastel', 'pixel']);
+});
+
+test('every skin defines a colour for all seven piece indices', () => {
+  SKINS.forEach(skin => {
+    for (let i = 1; i <= 7; i++)
+      assertEqual(typeof skinColor(skin, i), 'string', `${skin.id} index ${i}`);
+  });
+});
+
+test('every skin leaves index 0 falsy so drawBlock no-ops on empty cells', () => {
+  SKINS.forEach(skin => assertEqual(!skinColor(skin, 0), true, skin.id));
+});
+
+test('skinColor is falsy for an index outside the piece range', () => {
+  assertEqual(!skinColor(resolveSkin('retro'), 8), true);
+});
+
+test('the retro skin keeps the original palette', () => {
+  assertEqual(resolveSkin('retro').colors, [
+    null, '#4dd0e1', '#ffd54f', '#ba68c8', '#81c784', '#e57373', '#7986cb', '#ffb74d',
+  ]);
+});
+
+test('resolveSkin returns the skin matching an id', () => {
+  assertEqual(resolveSkin('neon').id, 'neon');
+});
+
+test('resolveSkin falls back to retro for an unknown id', () => {
+  assertEqual(resolveSkin('bogus').id, 'retro');
+});
+
+test('resolveSkin falls back to retro for a missing id', () => {
+  assertEqual(resolveSkin().id, 'retro');
+});
+
+test('resolveSkin falls back to retro for null', () => {
+  assertEqual(resolveSkin(null).id, 'retro');
+});
+
+test('resolveSkin falls back to retro for a non-string id', () => {
+  assertEqual(resolveSkin(3).id, 'retro');
+  assertEqual(resolveSkin({ id: 'neon' }).id, 'retro');
+});
+
 /* ---- report ---- */
 
 const passed = results.filter(r => r.ok).length;

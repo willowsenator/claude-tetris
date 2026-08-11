@@ -200,3 +200,61 @@ function normalizeLeaderboard(raw, max = LEADERBOARD_MAX) {
 function nextCombo(currentCombo, clearedThisLock) {
   return clearedThisLock > 0 ? currentCombo + 1 : 0;
 }
+
+/* Visual skins. Data only — engine.js must stay DOM-free, so a skin says WHAT to
+   paint and the canvas code in game.js decides HOW. `colors` is indexed by the
+   piece type exactly like the board cells are, which is why slot 0 stays null:
+   drawBlock no-ops on a falsy colour and the draw loops pass raw cell values.
+   `blockStyle` selects the drawing branch, `glow` is a shadow blur radius in
+   pixels and `radius` a corner radius; both are 0 when the style ignores them.
+   Everything else a skin changes (board background, grid line, mark colour) is a
+   CSS custom property, so canvas code never hard-codes a themed colour. */
+const SKINS = [
+  {
+    id: 'retro',
+    label: 'Retro',
+    blockStyle: 'flat',
+    glow: 0,
+    radius: 0,
+    colors: [null, '#4dd0e1', '#ffd54f', '#ba68c8', '#81c784', '#e57373', '#7986cb', '#ffb74d'],
+  },
+  {
+    id: 'neon',
+    label: 'Neon',
+    blockStyle: 'glow',
+    glow: 12,
+    radius: 0,
+    colors: [null, '#00e5ff', '#ffee00', '#e040fb', '#00ff88', '#ff1f5a', '#3d7bff', '#ff8a00'],
+  },
+  {
+    id: 'pastel',
+    label: 'Pastel',
+    blockStyle: 'rounded',
+    glow: 0,
+    radius: 7,
+    colors: [null, '#a8dde0', '#ffe6a7', '#d9bdf0', '#bfe3c3', '#f6b8bd', '#bcc4ef', '#ffd3ab'],
+  },
+  {
+    id: 'pixel',
+    label: 'Pixel art',
+    blockStyle: 'pixel',
+    glow: 0,
+    radius: 0,
+    colors: [null, '#3fa7d6', '#f0c419', '#8e44ad', '#4f9d4f', '#c0392b', '#3a5bbf', '#e07b1f'],
+  },
+];
+
+const DEFAULT_SKIN_ID = 'retro';
+
+/* Anything can reach this: a stale localStorage value, a hand-edited one, or
+   nothing at all. Every unknown input resolves to the default skin rather than
+   throwing, so a bad stored id can never stop the game from rendering. */
+function resolveSkin(id) {
+  return SKINS.find(entry => entry.id === id) || SKINS.find(entry => entry.id === DEFAULT_SKIN_ID);
+}
+
+/* The colour a piece type paints in this skin. Mirrors drawBlock's contract:
+   an empty cell (0) and any index outside the piece range come back falsy. */
+function skinColor(skin, colorIndex) {
+  return skin.colors[colorIndex] ?? null;
+}
