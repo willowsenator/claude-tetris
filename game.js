@@ -418,7 +418,8 @@ function showMenuView(view) {
 }
 
 function openMenu() {
-  if (gameOver || menuOpen) return;
+  // `board` is undefined until init() runs, which is what marks a game as started.
+  if (!canOpenPauseMenu({ started: Boolean(board), gameOver, menuOpen })) return;
   menuOpen = true;
   setPaused(true);
   showMenuView('main');

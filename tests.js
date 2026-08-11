@@ -477,6 +477,24 @@ test('a closed pause menu keeps the loop going', () => {
   assertEqual(shouldScheduleFrame({ gameOver: false, paused: false, menuOpen: false }), true);
 });
 
+/* ---- canOpenPauseMenu ---- */
+
+test('a running game can open the pause menu', () => {
+  assertEqual(canOpenPauseMenu({ started: true, gameOver: false, menuOpen: false }), true);
+});
+
+test('the pause menu cannot open before the first game starts', () => {
+  assertEqual(canOpenPauseMenu({ started: false, gameOver: false, menuOpen: false }), false);
+});
+
+test('a finished game cannot open the pause menu', () => {
+  assertEqual(canOpenPauseMenu({ started: true, gameOver: true, menuOpen: false }), false);
+});
+
+test('an already open pause menu does not open again', () => {
+  assertEqual(canOpenPauseMenu({ started: true, gameOver: false, menuOpen: true }), false);
+});
+
 /* ---- emptyLeaderboard ---- */
 
 test('an empty leaderboard has no entries', () => {

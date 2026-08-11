@@ -145,6 +145,13 @@ function shouldScheduleFrame({ gameOver, paused, menuOpen }) {
   return !gameOver && !paused && !menuOpen;
 }
 
+/* Whether a pause-menu key or button may open the menu. There is a game to pause
+   only between the start screen handing over to init() and the game ending, so
+   `started` is what keeps P and Escape inert while the start screen is up. */
+function canOpenPauseMenu({ started, gameOver, menuOpen }) {
+  return Boolean(started) && !gameOver && !menuOpen;
+}
+
 /* Keeps a chosen starting level inside 1..max. The value can come from localStorage
    or from a form control, so it may be a string, a fraction or nothing at all;
    anything that is not a usable number falls back to level 1. */

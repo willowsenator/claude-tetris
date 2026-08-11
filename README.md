@@ -165,7 +165,8 @@ in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), collis
 landing row a piece drops to (`collides`, `dropPosition`), clearing
 (`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
 (`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
-table), the loop-continuation rule (`shouldScheduleFrame`), the level rules
+table), the loop-continuation rule (`shouldScheduleFrame`), the rule for when the pause menu may
+open (`canOpenPauseMenu`), the level rules
 (`clampStartLevel`, `levelDropInterval`) and the scoring constants. The dividing
 line: anything decidable from a board and a level lives here, under test; `game.js` keeps what
 needs mutable state or the DOM.
