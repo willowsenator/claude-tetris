@@ -143,3 +143,60 @@ function lightningReward(target, level) {
 function shouldScheduleFrame({ gameOver, paused }) {
   return !gameOver && !paused;
 }
+
+/* ---- Leaderboard ----------------------------------------------------------
+   Pure list rules for the local top-N table. The storage I/O itself lives in
+   game.js; everything decidable from a list of entries lives here. An entry is
+   { name, score, bestCombo, maxLines }. */
+
+const LEADERBOARD_MAX = 5;
+const LEADERBOARD_DEFAULT_NAME = 'Anonymous';
+
+function emptyLeaderboard() {
+  return [];
+}
+
+/* Purely positional: a score gets in while there is a free slot, or when it
+   beats the lowest entry outright. A tie loses, so an existing record is never
+   displaced by an equal one. */
+function qualifiesForLeaderboard(entries, score, max = LEADERBOARD_MAX) {
+  if (entries.length < max) return true;
+  return score > entries[entries.length - 1].score;
+}
+
+/* Places an entry by score, highest first, and trims back to `max`. Ties keep
+   the older entry ahead. Returns the new list plus the index the entry landed
+   on so the caller can highlight that row — -1 when the trim dropped it. */
+function insertLeaderboardEntry(entries, entry, max = LEADERBOARD_MAX) {
+  let index = entries.findIndex(e => entry.score > e.score);
+  if (index === -1) index = entries.length;
+  const next = [...entries.slice(0, index), entry, ...entries.slice(index)].slice(0, max);
+  return { entries: next, index: index < max ? index : -1 };
+}
+
+function normalizeStat(value) {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/* Rebuilds a trustworthy list out of whatever came back from storage. Anything
+   unusable is dropped rather than repaired — a corrupt value must not reach the
+   rendering code — while a merely incomplete entry gets defaults. */
+function normalizeLeaderboard(raw, max = LEADERBOARD_MAX) {
+  if (!Array.isArray(raw)) return emptyLeaderboard();
+  return raw
+    .filter(e => e && typeof e === 'object' && typeof e.score === 'number' && Number.isFinite(e.score))
+    .map(e => ({
+      name: typeof e.name === 'string' && e.name.trim() ? e.name.trim() : LEADERBOARD_DEFAULT_NAME,
+      score: normalizeStat(e.score),
+      bestCombo: normalizeStat(e.bestCombo),
+      maxLines: normalizeStat(e.maxLines),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, max);
+}
+
+/* The combo counter: consecutive locks that each cleared at least one line. */
+function nextCombo(currentCombo, clearedThisLock) {
+  return clearedThisLock > 0 ? currentCombo + 1 : 0;
+}
