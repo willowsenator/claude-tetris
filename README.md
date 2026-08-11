@@ -44,9 +44,11 @@ It is a playable version of classic Tetris with all the mechanics you would expe
 - **Preview** of the next piece.
 - **Classic Tetris scoring** (100 / 300 / 500 / 800 multiplied by level).
 - **Levels** that go up every 10 lines and speed up the fall.
-- **Pause** and **Game Over** with a restart option.
+- A **pause menu** with resume, restart, a controls list and a starting-level picker (1–15, remembered between sessions).
+- **Game Over** with a restart option.
 - A **Lightning power-up** that wipes a whole row or column.
 - Four **visual skins** — Retro, Neon, Pastel and Pixel art — switchable from the side panel and remembered between sessions.
+- A **local top-5 leaderboard** behind a start screen, storing name, score, best combo and most lines cleared at once.
 
 ---
 
@@ -89,7 +91,7 @@ Then open `http://localhost:8000` in your browser.
 | `↑` or `X`| Rotate the piece clockwise    |
 | `↓`       | Soft drop (fall faster)       |
 | `Space`   | Hard drop (instant drop)      |
-| `P`       | Pause / resume                |
+| `P` / `Esc` | Open or close the pause menu |
 | `Z`       | Use a Lightning charge        |
 
 ---
@@ -148,7 +150,9 @@ Defines the visual structure:
 
 - A **300 × 600** pixel `<canvas id="board">` where the board is rendered.
 - A side panel with `SCORE`, `LINES`, `LEVEL`, `LIGHTNING`, the next-piece preview, the skin selector and the control list.
-- An overlay for the **PAUSED** and **GAME OVER** states.
+- An overlay for the **GAME OVER** state, carrying the leaderboard table and the name form.
+- A `#start-screen` with the local top-5 table, shown before the first game instead of auto-starting.
+- A `#pause-menu` dialog with two views — the main menu and the controls list — shown while the game is paused.
 
 ### 2. `style.css`
 
@@ -161,7 +165,8 @@ in `tests.html`: board building and rotation (`createBoard`, `rotateCW`), collis
 landing row a piece drops to (`collides`, `dropPosition`), clearing
 (`clearRowAt`, `clearColumnAt`, `clearFullRows`, `clearTarget`), the power-up rules
 (`pickPowerCell`, `rotatePowerCell`, `pickLightningTarget`, `lightningReward`, the `POWERUPS`
-table), the loop-continuation rule (`shouldScheduleFrame`) and the scoring constants. The dividing
+table), the loop-continuation rule (`shouldScheduleFrame`), the level rules
+(`clampStartLevel`, `levelDropInterval`) and the scoring constants. The dividing
 line: anything decidable from a board and a level lives here, under test; `game.js` keeps what
 needs mutable state or the DOM.
 
@@ -176,10 +181,10 @@ Contains all the game logic. Broadly:
 - **Pieces**: defined as square matrices. Rotation is computed as a transpose + row reverse (`rotateCW`).
 - **Collision detection** (`collide`): checks that no cell of the piece leaves the board or overlaps already-locked blocks.
 - **Wall kicks** (`tryRotate`): if the rotation collides, it tries shifting the piece ±1 and ±2 columns before discarding the turn.
-- **Game loop** (`loop`): based on `requestAnimationFrame`, it accumulates elapsed time and drops the piece one row once `dropInterval` is exceeded. It asks `shouldScheduleFrame` before booking the next frame, so the frame that ends the game is the last one. Pausing is handled earlier, by `togglePause()` cancelling the pending frame; the predicate states the whole "may the game advance" rule in one place so future flags have somewhere to go.
+- **Game loop** (`loop`): based on `requestAnimationFrame`, it accumulates elapsed time and drops the piece one row once `dropInterval` is exceeded. It asks `shouldScheduleFrame` before booking the next frame, so the frame that ends the game is the last one. Pausing is handled earlier, by `setPaused()` cancelling the pending frame; the predicate states the whole "may the game advance" rule in one place, which is where the pause menu's `menuOpen` flag went too.
 - **Line clearing** (`clearLines`): delegates to `clearFullRows` in `engine.js`, which walks the board from the bottom up removing every full row and inserting an empty one at the top, and reports how many Lightning marks the cleared rows carried.
 - **Scoring**: uses the classic table `[0, 100, 300, 500, 800]` multiplied by the current level; hard drop adds 2 points per cell travelled and soft drop 1 point per row.
-- **Level and speed**: the level goes up every 10 lines; drop speed is computed as `max(100, 1000 − (level − 1) × 90)` milliseconds.
+- **Level and speed**: the level is the chosen starting level plus one step per 10 lines; drop speed comes from `levelDropInterval()`, `max(100, 1000 − (level − 1) × 90)` milliseconds.
 - **Ghost piece** (`dropPosition` / `ghostY`): the tested engine helper projects the final position of the current piece downwards; `ghostY` binds it to game state, and the result is drawn with `globalAlpha = 0.2`.
 - **Power-up tracking**: a `powerBoard` matrix mirrors `board` and marks which landed cells carry a Lightning mark, since a board cell value already doubles as its color index. Both grids are passed together to the `engine.js` helpers that clear them, so they are always mutated in lockstep.
 

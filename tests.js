@@ -469,6 +469,14 @@ test('a game that is both finished and paused stops the loop', () => {
   assertEqual(shouldScheduleFrame({ gameOver: true, paused: true }), false);
 });
 
+test('an open pause menu stops the loop', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: false, paused: false, menuOpen: true }), false);
+});
+
+test('a closed pause menu keeps the loop going', () => {
+  assertEqual(shouldScheduleFrame({ gameOver: false, paused: false, menuOpen: false }), true);
+});
+
 /* ---- emptyLeaderboard ---- */
 
 test('an empty leaderboard has no entries', () => {
@@ -680,6 +688,56 @@ test('resolveSkin falls back to retro for null', () => {
 test('resolveSkin falls back to retro for a non-string id', () => {
   assertEqual(resolveSkin(3).id, 'retro');
   assertEqual(resolveSkin({ id: 'neon' }).id, 'retro');
+});
+
+/* ---- clampStartLevel ---- */
+
+test('clampStartLevel keeps a level that is already in range', () => {
+  assertEqual(clampStartLevel(7, 15), 7);
+});
+
+test('clampStartLevel lifts anything below one up to one', () => {
+  assertEqual(clampStartLevel(0, 15), 1);
+  assertEqual(clampStartLevel(-4, 15), 1);
+});
+
+test('clampStartLevel caps anything above the maximum at the maximum', () => {
+  assertEqual(clampStartLevel(99, 15), 15);
+});
+
+test('clampStartLevel accepts the two ends of the range unchanged', () => {
+  assertEqual(clampStartLevel(1, 15), 1);
+  assertEqual(clampStartLevel(15, 15), 15);
+});
+
+test('clampStartLevel floors a fractional level', () => {
+  assertEqual(clampStartLevel(3.9, 15), 3);
+});
+
+test('clampStartLevel falls back to one for a value that is not a number', () => {
+  assertEqual(clampStartLevel('abc', 15), 1);
+  assertEqual(clampStartLevel(null, 15), 1);
+  assertEqual(clampStartLevel(undefined, 15), 1);
+});
+
+test('clampStartLevel reads a numeric string, which is what storage returns', () => {
+  assertEqual(clampStartLevel('5', 15), 5);
+});
+
+/* ---- levelDropInterval ---- */
+
+test('level one drops at one second per row', () => {
+  assertEqual(levelDropInterval(1), 1000);
+});
+
+test('each level shaves ninety milliseconds off the drop interval', () => {
+  assertEqual(levelDropInterval(2), 910);
+  assertEqual(levelDropInterval(5), 640);
+});
+
+test('the drop interval never falls below one hundred milliseconds', () => {
+  assertEqual(levelDropInterval(11), 100);
+  assertEqual(levelDropInterval(50), 100);
 });
 
 /* ---- report ---- */

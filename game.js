@@ -32,11 +32,21 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const themeToggleBtn = document.getElementById('theme-toggle');
 const skinSelect = document.getElementById('skin-select');
+const pauseMenu = document.getElementById('pause-menu');
+const pauseMainView = document.getElementById('pause-main-view');
+const pauseControlsView = document.getElementById('pause-controls-view');
+const pauseResumeBtn = document.getElementById('pause-resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseBackBtn = document.getElementById('pause-back-btn');
+const pauseStartLevelSelect = document.getElementById('pause-start-level');
 
 const THEME_KEY = 'tetris-theme';
 const SKIN_KEY = 'tetris-skin';
+const START_LEVEL_KEY = 'tetris-start-level';
+const MAX_START_LEVEL = 15;
 
-let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor, skin;
+let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor, skin, menuOpen, startLevel, menuView;
 
 /* The canvas cannot read CSS variables while drawing, so the themed colours are
    cached here. Both the theme and the skin feed them, which is why every change
@@ -142,9 +152,12 @@ function merge() {
       }
 }
 
+/* Level is the chosen starting level plus one step per ten lines, so picking a
+   higher start shifts the whole curve up instead of being erased by the first
+   line clear. With the default start of 1 this is the original formula. */
 function updateLevel() {
-  level = Math.floor(lines / 10) + 1;
-  dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+  level = startLevel + Math.floor(lines / 10);
+  dropInterval = levelDropInterval(level);
 }
 
 /* Returns how many rows this clear removed, which is what the caller needs to
@@ -383,17 +396,61 @@ function endGame() {
   showGameOverLeaderboard();
 }
 
-function togglePause() {
-  if (gameOver) return;
-  paused = !paused;
-  if (!paused) {
+/* Suspends or resumes the fall. Resuming resets lastTime first: without that the
+   whole time spent paused would arrive as one dt and drop the piece instantly. */
+function setPaused(on) {
+  if (paused === on || gameOver) return;
+  paused = on;
+  if (on) {
+    cancelAnimationFrame(animId);
+  } else {
     lastTime = performance.now();
     loop(lastTime);
-  } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSED';
-    overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+  }
+}
+
+/* Swaps which of the menu's two views is on screen. Callers move focus afterwards,
+   since only they know which control the player came from. */
+function showMenuView(view) {
+  menuView = view;
+  pauseMainView.classList.toggle('hidden', view !== 'main');
+  pauseControlsView.classList.toggle('hidden', view !== 'controls');
+}
+
+function openMenu() {
+  if (gameOver || menuOpen) return;
+  menuOpen = true;
+  setPaused(true);
+  showMenuView('main');
+  pauseMenu.classList.remove('hidden');
+  // The dialog itself takes focus rather than a button, so a stray Space or Enter
+  // cannot activate an option the player never aimed at.
+  pauseMenu.focus();
+}
+
+function closeMenu() {
+  if (!menuOpen) return;
+  menuOpen = false;
+  pauseMenu.classList.add('hidden');
+  setPaused(false);
+}
+
+function toggleMenu() {
+  if (gameOver) return;
+  if (menuOpen) closeMenu();
+  else openMenu();
+}
+
+function readStoredStartLevel() {
+  return clampStartLevel(localStorage.getItem(START_LEVEL_KEY), MAX_START_LEVEL);
+}
+
+function buildStartLevelOptions() {
+  for (let n = 1; n <= MAX_START_LEVEL; n++) {
+    const option = document.createElement('option');
+    option.value = n;
+    option.textContent = n;
+    pauseStartLevelSelect.appendChild(option);
   }
 }
 
@@ -410,7 +467,7 @@ function loop(ts) {
     }
   }
   draw();
-  if (!shouldScheduleFrame({ gameOver, paused })) return;
+  if (!shouldScheduleFrame({ gameOver, paused, menuOpen })) return;
   animId = requestAnimationFrame(loop);
 }
 
@@ -425,6 +482,11 @@ function init() {
   maxLines = 0;
   paused = false;
   gameOver = false;
+  menuOpen = false;
+  pauseMenu.classList.add('hidden');
+  showMenuView('main');
+  startLevel = readStoredStartLevel();
+  pauseStartLevelSelect.value = startLevel;
   updateLevel();
   dropAccum = 0;
   lastTime = performance.now();
@@ -441,7 +503,24 @@ document.addEventListener('keydown', e => {
   // Nothing has been played yet: the start screen owns the page and there is no
   // piece for any key to act on.
   if (!current) return;
-  if (e.code === 'KeyP') { togglePause(); return; }
+  // Escape backs out one step at a time: controls view first, then the menu itself.
+  if (e.code === 'Escape') {
+    if (menuOpen && menuView === 'controls') {
+      showMenuView('main');
+      pauseControlsBtn.focus();
+    } else {
+      toggleMenu();
+    }
+    return;
+  }
+  if (e.code === 'KeyP') { toggleMenu(); return; }
+  if (menuOpen) {
+    // Space scrolls the page, but it also drives the menu's own controls
+    // (activating a button, opening the select), so only swallow it when the
+    // dialog shell itself holds focus.
+    if (e.code === 'Space' && e.target === pauseMenu) e.preventDefault();
+    return;
+  }
   if (paused || gameOver) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -469,6 +548,25 @@ document.addEventListener('keydown', e => {
 });
 
 restartBtn.addEventListener('click', init);
+
+pauseResumeBtn.addEventListener('click', closeMenu);
+pauseRestartBtn.addEventListener('click', init);
+pauseControlsBtn.addEventListener('click', () => {
+  showMenuView('controls');
+  pauseBackBtn.focus();
+});
+pauseBackBtn.addEventListener('click', () => {
+  showMenuView('main');
+  pauseControlsBtn.focus();
+});
+
+/* The starting level is a preference, not part of the running game: it is stored
+   now and picked up by the next init(), so the game in progress keeps its level. */
+pauseStartLevelSelect.addEventListener('change', () => {
+  localStorage.setItem(START_LEVEL_KEY, pauseStartLevelSelect.value);
+});
+
+buildStartLevelOptions();
 
 /* ---- Leaderboard ----------------------------------------------------------
    The list rules are pure and live in engine.js; what is left here is storage,
