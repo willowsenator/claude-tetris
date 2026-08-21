@@ -593,6 +593,45 @@ test('an inserted entry keeps its combo and line statistics', () => {
   assertEqual(insertLeaderboardEntry([], entry, 5).entries[0], entry);
 });
 
+/* ---- normalizeStat ---- */
+
+/* Reached only through normalizeLeaderboard, which is why these cases were never
+   pinned: the entries that carry them are dropped by its filter before the stat
+   is read. The contract is still its own — every unusable value becomes 0, and a
+   usable one is floored — so it is tested where it can actually be seen. */
+
+test('normalizeStat keeps a positive whole number', () => {
+  assertEqual(normalizeStat(7), 7);
+});
+
+test('normalizeStat floors a fractional value', () => {
+  assertEqual(normalizeStat(4.9), 4);
+});
+
+test('normalizeStat reads a numeric string', () => {
+  assertEqual(normalizeStat('12'), 12);
+});
+
+test('normalizeStat turns a negative value into zero', () => {
+  assertEqual(normalizeStat(-3), 0);
+});
+
+test('normalizeStat turns zero into zero', () => {
+  assertEqual(normalizeStat(0), 0);
+});
+
+test('normalizeStat turns a non-numeric value into zero', () => {
+  assertEqual(normalizeStat('nope'), 0);
+});
+
+test('normalizeStat turns a missing value into zero', () => {
+  assertEqual(normalizeStat(undefined), 0);
+});
+
+test('normalizeStat turns an infinite value into zero', () => {
+  assertEqual(normalizeStat(Infinity), 0);
+});
+
 /* ---- normalizeLeaderboard ---- */
 
 test('a missing stored leaderboard normalizes to an empty list', () => {
