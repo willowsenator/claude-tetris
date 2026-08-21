@@ -11,6 +11,8 @@ concurrency:
 
 jobs:
   triage:
+    # Issues filed by bots are left alone; triaging them is noise.
+    if: github.event.issue.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,21 +48,26 @@ jobs:
                Each entry under "comments" carries "author", "body", "createdAt" and "url". Keep the
                "url" values — step 5 needs the comment id embedded in them.
 
-            2. Read CLAUDE.md and README.md for project context. This is a dependency-free vanilla-JS
-               Tetris: index.html + style.css + game.js, no build, no test harness.
+            2. Read whichever of CLAUDE.md, AGENTS.md, README.md and CONTRIBUTING.md exist at the
+               repository root for project context: what the project is, how it is laid out, how it is
+               built and tested. If none exist, infer the shape of the project from the top-level file
+               listing and do not guess beyond it.
 
             3. Look for duplicates: gh search issues --repo ${{ github.repository }} "<key terms>"
 
-            4. Apply labels with:
+            4. Read the labels this repository actually defines:
+               gh label list
+
+               Apply labels with:
                gh issue edit ${{ github.event.issue.number }} --add-label "<label>"
 
-               Choose ONLY from the labels that already exist in this repo: bug, documentation,
-               duplicate, enhancement, good first issue, help wanted, invalid, question, wontfix.
-               Never create a new label. If none fit, apply none.
+               Choose ONLY from names returned by `gh label list`. Never create a new label. If none
+               fit, apply none.
 
-               On a re-run after an edit, prefer adding. Use --remove-label only for a label in that
-               list that the rewritten issue now clearly contradicts. Never remove a label outside
-               that list, since a human may have added it deliberately.
+               On a re-run after an edit, prefer adding. Use --remove-label only for a label that YOU
+               could have applied — one describing the issue's type, effort or duplicate status — and
+               that the rewritten issue now clearly contradicts. Never remove a release, priority,
+               ownership or process label, since a human may have added it deliberately.
 
             5. Leave exactly ONE triage comment, written in GitHub-Flavored Markdown so it renders
                correctly in the issue thread. Its first line must be the marker (an HTML comment,
@@ -79,11 +86,14 @@ jobs:
                | **Duplicate** | #123, or `none found` |
 
                **Likely files**
-               - `game.js` — one short clause on why
-               - `index.html` — one short clause on why
+               - `path/to/file` — one short clause on why
+               - `path/to/other` — one short clause on why
 
                **Missing information**
                - what the reporter still needs to provide
+
+               Name only files you have confirmed exist in this repository. If you cannot identify
+               likely files with confidence, drop that section rather than guessing.
 
                Markdown rules:
                - Reference issues as `#123` so GitHub links them; do not paste full URLs.
