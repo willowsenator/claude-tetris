@@ -495,6 +495,47 @@ test('an already open pause menu does not open again', () => {
   assertEqual(canOpenPauseMenu({ started: true, gameOver: false, menuOpen: true }), false);
 });
 
+/* ---- nextFocusIndex ---- */
+
+/* The wrap arithmetic behind the pause menu's focus trap. A modal that claims
+   aria-modal must not let Tab reach the page behind it, and the index that comes
+   back is the only part of that decidable without a DOM. -1 means focus is on the
+   dialog shell itself, which is where openMenu leaves it. */
+
+test('tabbing forward from the dialog shell lands on the first control', () => {
+  assertEqual(nextFocusIndex(4, -1, false), 0);
+});
+
+test('tabbing backward from the dialog shell lands on the last control', () => {
+  assertEqual(nextFocusIndex(4, -1, true), 3);
+});
+
+test('tabbing forward moves to the next control', () => {
+  assertEqual(nextFocusIndex(4, 1, false), 2);
+});
+
+test('tabbing backward moves to the previous control', () => {
+  assertEqual(nextFocusIndex(4, 2, true), 1);
+});
+
+test('tabbing forward past the last control wraps to the first', () => {
+  assertEqual(nextFocusIndex(4, 3, false), 0);
+});
+
+test('tabbing backward past the first control wraps to the last', () => {
+  assertEqual(nextFocusIndex(4, 0, true), 3);
+});
+
+test('a single control keeps focus on itself in both directions', () => {
+  assertEqual(nextFocusIndex(1, 0, false), 0);
+  assertEqual(nextFocusIndex(1, 0, true), 0);
+});
+
+test('a dialog with no focusable control reports no target', () => {
+  assertEqual(nextFocusIndex(0, -1, false), -1);
+  assertEqual(nextFocusIndex(0, -1, true), -1);
+});
+
 /* ---- emptyLeaderboard ---- */
 
 test('an empty leaderboard has no entries', () => {

@@ -152,6 +152,18 @@ function canOpenPauseMenu({ started, gameOver, menuOpen }) {
   return Boolean(started) && !gameOver && !menuOpen;
 }
 
+/* Where Tab should move focus inside a modal dialog. `current` is the index of the
+   focused control, or -1 when the dialog shell itself holds focus — which is where
+   openMenu() deliberately leaves it. The wrap is what keeps focus inside: a dialog
+   that declares aria-modal must not let Tab reach the page behind it, and the last
+   control tabbing forward has nowhere else to go. Returns -1 when the dialog holds
+   nothing focusable, so the caller leaves focus alone rather than guessing. */
+function nextFocusIndex(count, current, backwards) {
+  if (count < 1) return -1;
+  if (current < 0) return backwards ? count - 1 : 0;
+  return (current + (backwards ? -1 : 1) + count) % count;
+}
+
 /* Keeps a chosen starting level inside 1..max. The value can come from localStorage
    or from a form control, so it may be a string, a fraction or nothing at all;
    anything that is not a usable number falls back to level 1. */

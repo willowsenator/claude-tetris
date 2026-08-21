@@ -83,7 +83,15 @@ Work through every item. For each, state confirmed-clean, violated, or not-appli
     calling `Math.random()` directly is untestable and should be flagged. `engine.js` must keep
     loading before `game.js` in `index.html`.
 
-11. **Zero dependencies, zero build.** No `import`/`export`, no `async`, no `package.json`, nothing
+11. **A dialog declaring `aria-modal` must trap Tab.** `#pause-menu` and `#start-screen` carry
+    `role="dialog"` + `aria-modal="true"`, which the markup alone cannot honour. The pause menu is
+    trapped in the `menuOpen` branch of the keydown handler via `menuFocusables()` and
+    `nextFocusIndex()`. Flag a new modal added without a trap, a change that lets Tab escape, and
+    any `position: fixed` introduced on the pause overlay or its contents — `menuFocusables()`
+    filters on `offsetParent`, which is null for fixed elements, so that would silently empty the
+    list and disable the trap. The start screen is knowingly untrapped; do not report it as new.
+
+12. **Zero dependencies, zero build.** No `import`/`export`, no `async`, no `package.json`, nothing
     requiring a server — `index.html` must keep working from a `file://` open. UI strings,
     identifiers and comments stay English.
 

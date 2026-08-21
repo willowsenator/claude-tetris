@@ -46,7 +46,12 @@ const SKIN_KEY = 'tetris-skin';
 const START_LEVEL_KEY = 'tetris-start-level';
 const MAX_START_LEVEL = 15;
 
-let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor, skin, menuOpen, startLevel, menuView;
+/* Every mutable global lives here, in one place. They were split across two
+   declarations while the leaderboard was being added, which worked only because
+   init() is reached from the start button rather than at load: a top-level call
+   would have hit the second group's temporal dead zone. One list costs nothing
+   and removes the trap. */
+let board, powerBoard, powerCharges, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId, gridColor, powerColor, skin, menuOpen, startLevel, menuView, menuReturnFocus, leaderboard, bestCombo, maxLines, combo;
 
 /* The canvas cannot read CSS variables while drawing, so the themed colours are
    cached here. Both the theme and the skin feed them, which is why every change
@@ -417,9 +422,32 @@ function showMenuView(view) {
   pauseControlsView.classList.toggle('hidden', view !== 'controls');
 }
 
+/* The controls the menu currently offers Tab. Only one of the two views is on
+   screen at a time and the hidden one is display:none, so offsetParent is what
+   separates them — a control in the hidden view must never receive focus. */
+function menuFocusables() {
+  return [...pauseMenu.querySelectorAll('button, select')]
+    .filter(el => el.offsetParent !== null);
+}
+
+/* Hands focus back when the menu closes. Restoring blindly is worse than not
+   restoring: both the start button and the menu's own Restart button are hidden
+   by the time this runs, and focusing a hidden element drops focus somewhere the
+   player cannot see. So the remembered element is used only while it is still on
+   screen, and otherwise focus is simply released off the closing dialog. */
+function releaseMenuFocus() {
+  if (menuReturnFocus && menuReturnFocus.isConnected && menuReturnFocus.offsetParent !== null) {
+    menuReturnFocus.focus();
+  } else if (pauseMenu.contains(document.activeElement)) {
+    document.activeElement.blur();
+  }
+  menuReturnFocus = null;
+}
+
 function openMenu() {
   // `board` is undefined until init() runs, which is what marks a game as started.
   if (!canOpenPauseMenu({ started: Boolean(board), gameOver, menuOpen })) return;
+  menuReturnFocus = document.activeElement;
   menuOpen = true;
   setPaused(true);
   showMenuView('main');
@@ -433,6 +461,7 @@ function closeMenu() {
   if (!menuOpen) return;
   menuOpen = false;
   pauseMenu.classList.add('hidden');
+  releaseMenuFocus();
   setPaused(false);
 }
 
@@ -485,6 +514,7 @@ function init() {
   gameOver = false;
   menuOpen = false;
   pauseMenu.classList.add('hidden');
+  releaseMenuFocus();
   showMenuView('main');
   startLevel = readStoredStartLevel();
   pauseStartLevelSelect.value = startLevel;
@@ -516,6 +546,18 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyP') { toggleMenu(); return; }
   if (menuOpen) {
+    // The dialog says aria-modal, so Tab has to stay inside it. Without this the
+    // page behind keeps its tab order and focus walks out of the modal onto
+    // controls the player cannot see.
+    if (e.code === 'Tab') {
+      const items = menuFocusables();
+      const target = nextFocusIndex(items.length, items.indexOf(document.activeElement), e.shiftKey);
+      if (target >= 0) {
+        e.preventDefault();
+        items[target].focus();
+      }
+      return;
+    }
     // Space scrolls the page, but it also drives the menu's own controls
     // (activating a button, opening the select), so only swallow it when the
     // dialog shell itself holds focus.
@@ -585,8 +627,6 @@ const lbForm = document.getElementById('lb-form');
 const lbNameInput = document.getElementById('lb-name-input');
 const lbOverlayBody = document.getElementById('lb-overlay-body');
 const lbOverlayEmpty = document.getElementById('lb-overlay-empty');
-
-let leaderboard, bestCombo, maxLines, combo;
 
 /* Storage holds JSON written by an older version, another tab, or a user with a
    console, so both the parse and the read itself are treated as untrusted: a
