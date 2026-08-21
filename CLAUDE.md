@@ -18,6 +18,8 @@ node -e "$(cat engine.js; cat tests.js)"   # same suite headlessly; exits 0 gree
 
 The headless form is the gate: it prints `N passed, M failed`, names each failure, and **sets the exit code**, so a script or an agent can act on the result. It needs no runner and no dependency — `tests.js` writes into the page when a `document` exists and sets `process.exitCode` when one does not. Both forms run the same tests over the same `engine.js`.
 
+That gate is wired up rather than left to memory. `.claude/hooks/engine-tests.sh` runs the same headless line after any `Edit`/`Write` whose basename is `engine.js` or `tests.js`, registered as a `PostToolUse` hook in `.claude/settings.json`; it exits 0 on green and 2 with the failing test names on stderr, so a broken suite surfaces at the edit instead of at the commit. It adds no dependency — it is the `node -e` line behind a `jq` filter on the file name, and it no-ops on every other file. Note that the global commit gate only observes tests run through the Bash tool, so a green hook run does not by itself satisfy it. `.claude/agents/invariant-reviewer.md` is the companion reviewer for the cross-file invariants listed below, which nothing else checks.
+
 There is no build or lint command. New logic that can be expressed as a pure function belongs in `engine.js` with a test in `tests.js` (TDD rule in the global CLAUDE.md); anything that needs the DOM or mutable game state stays in `game.js` and is verified by hand in the browser. Adding real tooling (a runner, a package manager) still needs discussion with the user — "zero dependencies / zero build" is a stated property of the project.
 
 ## Architecture
