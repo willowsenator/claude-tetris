@@ -422,12 +422,27 @@ function showMenuView(view) {
   pauseControlsView.classList.toggle('hidden', view !== 'controls');
 }
 
-/* The controls the menu currently offers Tab. Only one of the two views is on
-   screen at a time and the hidden one is display:none, so offsetParent is what
-   separates them — a control in the hidden view must never receive focus. */
-function menuFocusables() {
-  return [...pauseMenu.querySelectorAll('button, select')]
+/* The controls a dialog currently offers Tab. The pause menu keeps both of its
+   views in the DOM and hides one with display:none, so offsetParent is what
+   separates them — a control in the hidden view must never receive focus. That
+   filter also relies on nothing here being position:fixed, for which offsetParent
+   is null even when visible. */
+function dialogFocusables(dialog) {
+  return [...dialog.querySelectorAll('button, select, input')]
     .filter(el => el.offsetParent !== null);
+}
+
+/* Keeps Tab inside a modal dialog, which is the promise aria-modal makes and the
+   markup cannot keep on its own: the page behind keeps its tab order regardless.
+   Returns whether it handled the key, so a caller can fall through when the
+   dialog holds nothing focusable. */
+function trapTab(e, dialog) {
+  const items = dialogFocusables(dialog);
+  const target = nextFocusIndex(items.length, items.indexOf(document.activeElement), e.shiftKey);
+  if (target < 0) return false;
+  e.preventDefault();
+  items[target].focus();
+  return true;
 }
 
 /* Hands focus back when the menu closes. Restoring blindly is worse than not
@@ -532,8 +547,14 @@ function init() {
 
 document.addEventListener('keydown', e => {
   // Nothing has been played yet: the start screen owns the page and there is no
-  // piece for any key to act on.
-  if (!current) return;
+  // piece for any key to act on. It is a modal like the pause menu, though, so Tab
+  // still has to stay inside it. `startScreen` is declared further down the file
+  // and is initialised by the time any key can arrive, since nothing dispatches
+  // events while the script is still running.
+  if (!current) {
+    if (e.code === 'Tab' && !startScreen.classList.contains('hidden')) trapTab(e, startScreen);
+    return;
+  }
   // Escape backs out one step at a time: controls view first, then the menu itself.
   if (e.code === 'Escape') {
     if (menuOpen && menuView === 'controls') {
@@ -550,12 +571,7 @@ document.addEventListener('keydown', e => {
     // page behind keeps its tab order and focus walks out of the modal onto
     // controls the player cannot see.
     if (e.code === 'Tab') {
-      const items = menuFocusables();
-      const target = nextFocusIndex(items.length, items.indexOf(document.activeElement), e.shiftKey);
-      if (target >= 0) {
-        e.preventDefault();
-        items[target].focus();
-      }
+      trapTab(e, pauseMenu);
       return;
     }
     // Space scrolls the page, but it also drives the menu's own controls

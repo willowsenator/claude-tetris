@@ -84,12 +84,13 @@ Work through every item. For each, state confirmed-clean, violated, or not-appli
     loading before `game.js` in `index.html`.
 
 11. **A dialog declaring `aria-modal` must trap Tab.** `#pause-menu` and `#start-screen` carry
-    `role="dialog"` + `aria-modal="true"`, which the markup alone cannot honour. The pause menu is
-    trapped in the `menuOpen` branch of the keydown handler via `menuFocusables()` and
-    `nextFocusIndex()`. Flag a new modal added without a trap, a change that lets Tab escape, and
-    any `position: fixed` introduced on the pause overlay or its contents — `menuFocusables()`
-    filters on `offsetParent`, which is null for fixed elements, so that would silently empty the
-    list and disable the trap. The start screen is knowingly untrapped; do not report it as new.
+    `role="dialog"` + `aria-modal="true"`, which the markup alone cannot honour. Both are trapped
+    by `trapTab(e, dialog)`, called from the `menuOpen` branch of the keydown handler and from its
+    `!current` branch respectively. Flag a new modal added without a `trapTab()` call, a change
+    that lets Tab escape, and any `position: fixed` introduced on a dialog or its contents —
+    `dialogFocusables()` filters on `offsetParent`, which is null for fixed elements, so that would
+    silently empty the list and disable the trap with no error. `#overlay` is deliberately not
+    trapped: it declares no `aria-modal`, so it makes no promise to keep. Do not report it.
 
 12. **Zero dependencies, zero build.** No `import`/`export`, no `async`, no `package.json`, nothing
     requiring a server — `index.html` must keep working from a `file://` open. UI strings,
