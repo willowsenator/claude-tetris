@@ -94,7 +94,11 @@ It prints `N passed, M failed` and sets the exit code. Report the actual output.
 
 ## Output
 
-For each violation: the invariant number, `file:line`, what breaks at runtime as a concrete
-scenario (what the player would see), and the minimal fix. Rank by severity. If everything is
-clean, say so plainly and list which checklist items actually applied to this diff — do not invent
-findings to look thorough.
+Report findings as a markdown table — `| # | File:Line | Category | Issue | Suggestion |` — grouped
+by severity (Critical / Warning / Info), most severe first, so the umbrella review can merge them
+with the other reviewers' findings. Use the invariant's number as its category. The Issue column
+must say what the player would actually see, not just which rule was broken; the Suggestion column
+must carry the minimal fix.
+
+If the diff is clean, say so plainly and list which checklist items actually applied to it — do not
+invent findings to look thorough.
