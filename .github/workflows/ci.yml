@@ -24,7 +24,7 @@ jobs:
       # No package.json and no dependencies, so there is nothing to install or cache.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: 26
           package-manager-cache: false
       # The same suite as `node -e "$(cat engine.js; cat tests.js)"`, fed on stdin so it never
       # hits the per-argument size limit as tests.js grows. tests.js sets the exit code.
