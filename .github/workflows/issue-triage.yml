@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 1
 
       - name: Triage issue
-        uses: anthropics/claude-code-action@7b0b255830a1fab6e602658672acad11c12d841d # v1
+        uses: anthropics/claude-code-action@f431adaf77e0fecf918431e75a2b5b45b85af002 # v1
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
